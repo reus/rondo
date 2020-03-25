@@ -1,6 +1,6 @@
 ## Rondo
 
-Positional football simulation through deep learning
+Positional football simulation through deep learning, using Clojure and ClojureScript.
 
 ### License
 
