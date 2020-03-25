@@ -7,7 +7,6 @@
             [cljs.core.async :as async :refer [<! >! chan put! timeout]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
-
 (enable-console-print!)
 
 (defn print-player-info! [player]
