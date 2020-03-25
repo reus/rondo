@@ -13,5 +13,9 @@
            :build-cljs {:main-opts ["-m" "cljs.main"
                                     "-co" "dev.cljs.edn"
                                     "-c" "dev.reus.rondo.app"]}
+           :fig {:main-opts ["-i" "scripts/server.clj"
+                             "-m" "figwheel.main"
+                             "-b" "dev"
+                             "-r"]}
            :garamond {:main-opts ["-m" "garamond.main"]
                       :extra-deps {com.workframe/garamond {:mvn/version "0.4.0"}}}}}
