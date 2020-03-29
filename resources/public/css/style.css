@@ -3,6 +3,11 @@ a {
     color: #222299;
 }
 
+body {
+    background-color: #111111;
+    color: #cccccc;
+}
+
 #container {
     width: 780px;
     height: 560px;
@@ -28,6 +33,10 @@ a {
     height: 560px;
     font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
     font-weight: 400;
+}
+
+.back {
+    color: #ccefcc;
 }
 
 .teams {
@@ -61,11 +70,11 @@ a {
 
 .player.selected, .player.selected:hover,
     .team.selected, .team.selected:hover {
-    background-color: #aabbcc;
+    background-color: #313131;
 }
 
 .player:hover, .team:hover {
-    background-color: #ccddee;
+    background-color: #313131;
 }
 
 li.team {

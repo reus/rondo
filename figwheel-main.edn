@@ -1,5 +1,6 @@
 {:ring-server-options {:port 9500}
  :watch-dirs ["src/cljs"]
+ :css-dirs ["resources/public/css"]
  :connect-url "ws://localhost:9500/figwheel-connect"
  :open-url false}
 
