@@ -7,6 +7,11 @@
 (defonce deg2rad (/ (.-PI js/Math) 180))
 (defonce cor (/ (.-PI js/Math) 45))
 
+(defn init-drawing-context []
+  (let [canvas (by-id "canvas")
+        context (.getContext canvas "2d")]
+    {:context context}))
+
 (defn draw-player! [p state]
   (let [[x y] (:pos p)
         ctx (:context (:drawing-context state))]
@@ -17,18 +22,12 @@
     (.fill ctx)
     (.closePath ctx)
     (.arc ctx x y (:player-size dev.reus.rondo.gamedata/settings) 0 (* (- (:rotation p) 90) deg2rad))
-   ; (when (= (:index p) (:selected-player state))
-   ;   (set! (.-strokeStyle ctx) "black")
-   ;   (set! (.-lineWidth ctx) 2)
-   ;   (.stroke ctx))
-   ; (.beginPath ctx)
-   ; (.moveTo ctx x y)
-
-   ; (set! (.-lineWidth ctx) 1)
-   ; (set! (.-strokeStyle ctx) "black")
-   ; (.lineTo ctx x y)
-   ; (.stroke ctx))
+    (when (= (:index p) (:selected-player (:ui-state state)))
+      (set! (.-strokeStyle ctx) "black")
+      (set! (.-lineWidth ctx) 2)
+      (.stroke ctx))
     ))
+
 (defn draw-scene! [state]
   (let [{players :players
          drawing-context :drawing-context} state]
@@ -39,7 +38,3 @@
       (doseq [p players]
         (draw-player! p state)))))
 
-(defn init-drawing-context []
-  (let [canvas (by-id "canvas")
-        context (.getContext canvas "2d")]
-    {:context context}))

@@ -4,8 +4,12 @@ a {
 }
 
 body {
-    background-color: #111111;
+    background-color: #2d2d2d;
     color: #cccccc;
+}
+
+input {
+    font-size: 0.8em;
 }
 
 #container {
@@ -36,7 +40,7 @@ body {
 }
 
 .back {
-    color: #ccefcc;
+    color: #aaaaaa;
 }
 
 .teams {
@@ -70,11 +74,11 @@ body {
 
 .player.selected, .player.selected:hover,
     .team.selected, .team.selected:hover {
-    background-color: #313131;
+    background-color: #5a5a5a;
 }
 
 .player:hover, .team:hover {
-    background-color: #313131;
+    background-color: #494949;
 }
 
 li.team {
