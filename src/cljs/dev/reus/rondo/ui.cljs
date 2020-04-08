@@ -17,9 +17,10 @@
                                  :selected-player nil}))
 
 (defn swap-state! [swap-fn & args]
+  "Helper function to update state and send signal to channel."
   (doseq [a (partition 2 args)]
     ((fn [[s v]] (swap! ui-state swap-fn s v)) a))
-  (reset! signal {:type :state-changed}))
+  (reset! signal {:type :ui-state-changed}))
 
 (defn ui-player []
   "Returns ui for handling players."
@@ -80,7 +81,6 @@
   (let [canvas (by-id "canvas")]
     (.addEventListener canvas "mousedown" (fn [e] (canvas-clicked e)))
     (.addEventListener js/document "keydown" (fn [e] (process-keydown e)))))
-
 
 (defn setup-ui []
   "Setup the main user interface rendered by Reagent. Creates a core async channel through that offers

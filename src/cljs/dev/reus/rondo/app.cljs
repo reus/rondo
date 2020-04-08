@@ -87,12 +87,3 @@
   "Figwheel convenience function.")
 
 (defonce game (start-game))
-
-(go (loop [refresh (timeout rate) s state]
-      (let [[v c] (alts! [refresh ui-channel])]
-        (condp = c
-          refresh (let [new-state (step s)]
-                    (render! new-state)
-                    (recur (timeout rate) new-state))
-          ui-channel (let [new-state (process-ui s v)]
-                       (recur refresh new-state))))))
