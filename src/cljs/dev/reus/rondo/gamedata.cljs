@@ -14,7 +14,7 @@
 (defonce players [
               {:name "Van Breukelen"
                :pos [190 16]
-               :rotation 180
+               :rotation 0
                :team :nl
                :nr 1}
               {:name "R. Koeman"
@@ -25,7 +25,7 @@
                }
               {:name "Van Aerle"
                :pos [44 122]
-               :rotation 90
+               :rotation 0
                :team :nl
                :nr 6
                }

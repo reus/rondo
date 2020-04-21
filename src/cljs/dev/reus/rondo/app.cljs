@@ -39,6 +39,8 @@
   "With the event just received from the ui channel, process the event
    and update the state when necessary."
   (case (:type evt)
+    :select-player (reset! ui/ui-state (assoc state :selected-player (:index evt) :selected-team nil))
+    :select-team (reset! ui/ui-state (assoc state :selected-team (:team-id evt) :selected-player nil))
     :click (let [event (:event evt)
                  ps (:players state)
                  canvas (.-target event)
@@ -47,10 +49,32 @@
                  y (- (.-clientY event) (.-top rect))
                  mouse-selected-player (model/point-in-players? [x y] (:players state))]
              (if mouse-selected-player
-               (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
-               (swap! ui/ui-state assoc :selected-player nil :selected-team nil))
-             (assoc state :ui-state @ui/ui-state))
-    (assoc state :ui-state @ui/ui-state)))
+               (reset! ui/ui-state (assoc state :selected-player mouse-selected-player :selected-team nil))
+               (reset! ui/ui-state (assoc state :selected-player nil :selected-team nil))))
+    :keydown (let [event (:event evt)]
+               ;(println event.key)
+               (case event.key
+                 "p" (do
+                       (if-let [sel (:selected-player state)]
+                         (println (get (:players state) sel))
+                         (println (:players state)))
+                       state)
+                 "ArrowLeft" (if-let [i (:selected-player state)]
+                               (update-in state [:players i :rotation] #(mod (- % 1) 8))
+                               state)
+                 "ArrowRight" (if-let [i (:selected-player state)]
+                                (update-in state [:players i :rotation] #(mod (+ % 1) 8))
+                                state)
+                 state))
+    :random-position (let [i (:index evt)]
+                      (println i)
+                      state)
+    :reset-position (let [i (:index evt)]
+                      (println i)
+                      state)
+    :ui-state-changed @ui/ui-state
+    state))
+
 
 (defn game-loop [state ui-channel player-channel]
   "Start the game loop. Starts a go loop that listens for three channels:
@@ -79,7 +103,7 @@
    * Run the webworker script
    * Start the game loop and binds the webworker code to the player channel."
   (let [state (model/init-state)
-        ui-channel (ui/setup-ui)
+        ui-channel (ui/setup-ui state)
         player-channel (setup-worker)]
     (game-loop state ui-channel player-channel)))
 

@@ -52,6 +52,9 @@
      :drawing-context drawing-context
      :player-with-ball 0
      :players players
+     :selected-player nil
+     :teams gamedata/teams
+     :selected-team nil
      :ui-state nil}))
 
 (defn dot-product [v1 v2]
