@@ -61,18 +61,19 @@
                                         [:span {:class "nr"} (:nr player)]
                                         [:span {:class "name"} (:name player)]])])]
      [:div.settings
-        (if (:selected-player state)
-          [ui-player]
-          (if (:selected-team state)
-            [ui-team]
-            [:div "General settings"
-             [:input {:type "button" :value "Reset all players"}]]))]]))
-
+      [:div "FPS: " (str (:fps state))]
+      (if (:selected-player state)
+        [ui-player]
+        (if (:selected-team state)
+          [ui-team]
+          [:div "General settings"
+           [:input {:type "button" :value "Reset all players"}]]))]]))
 
 (defn setup-event-handlers! []
   "Add event listeners."
   (let [canvas (by-id "canvas")]
     (.addEventListener canvas "mousedown" (fn [e] (reset! signal {:type :click :event e})))
+    (.addEventListener js/document "keyup" (fn [e] (reset! signal {:type :keyup :event e})))
     (.addEventListener js/document "keydown" (fn [e] (reset! signal {:type :keydown :event e})
                                                (case e.key ("ArrowUp" "ArrowDown") (do (.preventDefault e)) nil)))))
 
@@ -88,3 +89,7 @@
     (setup-event-handlers!)
     (reagent/track! state-updater)
     ui-chan))
+
+(defn update-fps! [{:keys [fps]}]
+  "Update the frames per second counter in the ui."
+)

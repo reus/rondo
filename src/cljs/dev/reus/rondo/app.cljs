@@ -10,17 +10,42 @@
 (defn render! [state]
   "Render all game objects to the drawing context."
   ;(dev.reus.rondo.webgl/draw-scene! state))
+  (ui/update-fps! state)
   (canvas2d/draw-scene! state))
 
-(defn step [s]
-  "Take a step in the game heartbeat. Increments the framecount, and updates the milliseconds."
-  (let [current-millis (.now js/Date)
-        dmillis (- current-millis (:current-millis s))
-        frame (:frame s)
-        new-state (assoc s :current-millis current-millis
-                         :frame-millis dmillis
-                         :frame (inc frame))]
-    new-state))
+(defn update-time [{:keys [start-time current-time fps-time frame] :as state}]
+  "Update the time and fps of the game"
+  (let [next-millis (.now js/Date)
+        dmillis (- next-millis current-time)
+        next-frame (inc frame)
+        time-since-fps (- next-millis fps-time)
+        new-state (assoc state :current-time next-millis
+                         :frame-time 0.001 * dmillis
+                         :frame next-frame)]
+    (if (> time-since-fps 1000)
+      (assoc new-state :frame 1 :fps-time next-millis
+             :fps (int (/ 1000 (/ time-since-fps frame))))
+      new-state)))
+
+(defn process-input [state]
+  "Update a player's direction and acceleration based
+   on the (arrow) keys pressed."
+  (if-let [p (:selected-player state)]
+    (let [max-acc (get-in state [:players p :max-acc])
+          dir (get model/directions (get-in state [:players p :rotation]))
+          dt (:frame-trime state)
+          [rot forward] (:keys-pressed state)]
+      (-> state
+          (update-in [:players p :rotation] #(mod (+ % %2) 8) rot)
+          (assoc-in [:players p :acceleration] (mapv #(* (* forward 10000) %) dir))
+          (assoc-in [:keys-pressed 0] 0)))
+    state))
+
+(defn step [state]
+  (-> state
+      (update-time)
+      (process-input)
+      (model/move-players)))
 
 (defn setup-worker []
   "Create a webworker object and a player channel with which the worker
@@ -39,8 +64,8 @@
   "With the event just received from the ui channel, process the event
    and update the state when necessary."
   (case (:type evt)
-    :select-player (reset! ui/ui-state (assoc state :selected-player (:index evt) :selected-team nil))
-    :select-team (reset! ui/ui-state (assoc state :selected-team (:team-id evt) :selected-player nil))
+    :select-player (assoc state :selected-player (:index evt) :selected-team nil)
+    :select-team (assoc state :selected-team (:team-id evt) :selected-player nil)
     :click (let [event (:event evt)
                  ps (:players state)
                  canvas (.-target event)
@@ -49,22 +74,30 @@
                  y (- (.-clientY event) (.-top rect))
                  mouse-selected-player (model/point-in-players? [x y] (:players state))]
              (if mouse-selected-player
-               (reset! ui/ui-state (assoc state :selected-player mouse-selected-player :selected-team nil))
-               (reset! ui/ui-state (assoc state :selected-player nil :selected-team nil))))
+               (assoc state :selected-player mouse-selected-player :selected-team nil)
+               (assoc state :selected-player nil :selected-team nil)))
+    :keyup (let [event (:event evt)]
+             (case event.key
+               "ArrowLeft" (assoc-in state [:keys-pressed 0] 0)
+               "ArrowRight" (assoc-in state [:keys-pressed 0] 0)
+               "ArrowUp" (assoc-in state [:keys-pressed 1] 0)
+               "ArrowDown" (assoc-in state [:keys-pressed 1] 0)
+               state))
+
     :keydown (let [event (:event evt)]
-               ;(println event.key)
                (case event.key
                  "p" (do
                        (if-let [sel (:selected-player state)]
                          (println (get (:players state) sel))
                          (println (:players state)))
                        state)
-                 "ArrowLeft" (if-let [i (:selected-player state)]
-                               (update-in state [:players i :rotation] #(mod (- % 1) 8))
-                               state)
-                 "ArrowRight" (if-let [i (:selected-player state)]
-                                (update-in state [:players i :rotation] #(mod (+ % 1) 8))
-                                state)
+                 "s" (do
+                       (println state)
+                       state)
+                 "ArrowLeft" (assoc-in state [:keys-pressed 0] -1)
+                 "ArrowRight" (assoc-in state [:keys-pressed 0] 1)
+                 "ArrowUp" (assoc-in state [:keys-pressed 1] 1)
+                 "ArrowDown" (assoc-in state [:keys-pressed 1] -1)
                  state))
     :random-position (let [i (:index evt)]
                       (println i)
@@ -85,16 +118,16 @@
   (let [rate (:refresh-rate state)]
     (render! state)
     (go (loop [refresh (timeout rate) s state]
-          (let [[v c] (alts! [refresh ui-channel player-channel])]
+          (let [[v c] (alts! [refresh ui-channel player-channel] :priority true)]
             (condp = c
+              ui-channel (let [new-state (process-ui s v)]
+                           (recur refresh (reset! ui/ui-state new-state)))
               refresh (let [new-state (step s)]
                         (render! new-state)
-                        (recur (timeout rate) new-state))
-              ui-channel (let [new-state (process-ui s v)]
-                           (recur refresh new-state))
+                        (recur (timeout rate) (reset! ui/ui-state new-state)))
               player-channel (let [new-state v]
                                ;(.postMessage worker v)
-                               (recur refresh new-state))))))))
+                               (recur refresh (reset! ui/ui-state new-state)))))))))
 
 (defn start-game []
   "Start the game.

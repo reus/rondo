@@ -3,6 +3,30 @@
             [dev.reus.rondo.canvas2d :as canvas2d]
             [cljs.pprint :refer [pprint]]))
 
+(defonce directions [[0 -1]
+                     [0.7 -0.7]
+                     [1 0]
+                     [0.7 0.7]
+                     [0 1]
+                     [-0.7 0.7]
+                     [-1 0]
+                     [-0.7 -0.7]])
+
+(defn dot-product [v1 v2]
+  "Helper function to compute the dot product of two vectors."
+  (apply + (map * v1 v2)))
+
+(defn magnitude [[vx vy]]
+  "Helper function to compute the magnitude of a vector."
+  (.sqrt js/Math (+ (* vx vx) (* vy vy))))
+
+(defn normalize [[vx vy]]
+  "Helper function to get the normalized version of a vector."
+  (let [mag (magnitude [vx vy])]
+    (if (zero? mag)
+      [0 0]
+      (mapv #(/ % mag) [vx vy]))))
+
 (defn print-player-info! [player]
   "Print information of a player."
   (let [p (select-keys player [:name :pos])]
@@ -25,8 +49,8 @@
       [0 0 0])))
 
 (defn init-players [players]
-  "Initialize player vector. Adds an index, color and colorstring
-   to each player hashmap."
+  "Initialize player vector. Adds different game related
+   properties to each player hashmap."
   (loop [i 0 p-ext []]
     (if-let [player (get players i)]
       (let [team (:team player)
@@ -44,11 +68,14 @@
   (let [players (init-players gamedata/players)
         ;webgl (dev.reus.rondo.webgl/setup-webgl (count players))]
         drawing-context (canvas2d/init-drawing-context)]
-    {:refresh-rate 20
-     :start-millis (.now js/Date)
-     :current-millis (.now js/Date)
-     :frame-millis 0
+    {:keys-pressed [0 0]
+     :refresh-rate 20
+     :start-time (.now js/Date)
+     :current-time (.now js/Date)
+     :frame-time 0
+     :fps-time (.now js/Date)
      :frame 1
+     :fps 0
      :drawing-context drawing-context
      :player-with-ball 0
      :players players
@@ -57,9 +84,6 @@
      :selected-team nil
      :ui-state nil}))
 
-(defn dot-product [v1 v2]
-  "Helper function to compute the dot product."
-  (apply + (map * v1 v2)))
 
 (defn point-in-player? [[x y] player]
   "Determine whether the point (x,y) is part of a player's body."
@@ -128,3 +152,20 @@
 (defn ui-select-player [state player-index]
   "Set player with index player-index as selected in game state."
     (assoc state :selected-team nil :selected-player player-index))
+
+(defn move-player-fn [dt]
+  "update velocity and position for player."
+  (fn [{acc :acceleration vel :velocity rot :rotation pos :pos :as player}]
+    (let [vel2 (mapv + vel (map #(* dt %) acc))
+          vel-magn (magnitude vel2)
+          vel-norm (normalize vel2)
+          dir (map #(/ % 50) (get directions rot))
+          new-dir (map + vel-norm dir)
+          new-dir-norm (normalize new-dir)
+          new-vel (mapv #(* % vel-magn) new-dir-norm)
+          new-pos (mapv + pos (map #(* dt %) new-vel))]
+      (assoc player :velocity new-vel :pos new-pos))))
+
+(defn move-players [{players :players :as state}]
+  (let [move-player (move-player-fn (:frame-time state))]
+    (assoc state :players (mapv move-player players))))

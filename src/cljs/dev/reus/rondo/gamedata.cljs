@@ -1,7 +1,7 @@
 (ns dev.reus.rondo.gamedata)
 
 (defonce settings {:pitch-size [400 400]
-                   :player-size 10})
+                   :player-size 5})
 
 (defonce teams
            [{:name "Germany"
@@ -15,29 +15,44 @@
               {:name "Van Breukelen"
                :pos [190 16]
                :rotation 0
+               :velocity [0 0]
+               :acceleration [0 0]
+               :max-acc 10
                :team :nl
                :nr 1}
               {:name "R. Koeman"
                :pos [320 320]
                :rotation 0
+               :velocity [0 0]
+               :acceleration [0 0]
+               :max-acc 10
                :team :nl
                :nr 4
                }
               {:name "Van Aerle"
                :pos [44 122]
                :rotation 0
+               :velocity [0 0]
+               :acceleration [0 0]
+               :max-acc 10
                :team :nl
                :nr 6
                }
               {:name "Rolff"
                :pos [271 203]
                :rotation 0
+               :velocity [0 0]
+               :acceleration [0 0]
+               :max-acc 10
                :team :de
                :nr 20
                }
               {:name "Mill"
                :pos [58 159]
                :rotation 0
+               :velocity [0 0]
+               :acceleration [0 0]
+               :max-acc 10
                :team :de
                :nr 11
                }
