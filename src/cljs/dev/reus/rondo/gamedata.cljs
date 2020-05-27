@@ -14,7 +14,7 @@
 (defonce players [
               {:name "Van Breukelen"
                :pos [190 16]
-               :rotation 0
+               :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
@@ -22,7 +22,7 @@
                :nr 1}
               {:name "R. Koeman"
                :pos [320 320]
-               :rotation 0
+               :direction [0 -1]
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
@@ -31,7 +31,7 @@
                }
               {:name "Van Aerle"
                :pos [44 122]
-               :rotation 0
+               :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
@@ -40,7 +40,7 @@
                }
               {:name "Rolff"
                :pos [271 203]
-               :rotation 0
+               :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
@@ -49,7 +49,7 @@
                }
               {:name "Mill"
                :pos [58 159]
-               :rotation 0
+               :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10

@@ -1,16 +1,8 @@
 (ns dev.reus.rondo.model
   (:require [dev.reus.rondo.gamedata :as gamedata]
-            [dev.reus.rondo.canvas2d :as canvas2d]
             [cljs.pprint :refer [pprint]]))
 
-(defonce directions [[0 -1]
-                     [0.7 -0.7]
-                     [1 0]
-                     [0.7 0.7]
-                     [0 1]
-                     [-0.7 0.7]
-                     [-1 0]
-                     [-0.7 -0.7]])
+(defonce keys-pressed [0 0])
 
 (defn dot-product [v1 v2]
   "Helper function to compute the dot product of two vectors."
@@ -39,52 +31,6 @@
       (print-player-info! player))
     state))
 
-(defn find-color [team]
-  "Determine the shirt-color of a team. Use a keyword."
-  (loop [i 0]
-    (if-let [t (get gamedata/teams i)]
-      (if (= (:id t) team)
-        (:color t)
-        (recur (inc i)))
-      [0 0 0])))
-
-(defn init-players [players]
-  "Initialize player vector. Adds different game related
-   properties to each player hashmap."
-  (loop [i 0 p-ext []]
-    (if-let [player (get players i)]
-      (let [team (:team player)
-            color (find-color team)
-            [r g b] (map #(* 256 %) color)
-            color-str (str "rgb(" r "," g "," b ")")]
-        (recur (inc i) (conj p-ext (assoc player
-                                          :index i
-                                          :color color
-                                          :color-str color-str))))
-      p-ext)))
-
-(defn init-state []
-  "Create the initial state hashmap."
-  (let [players (init-players gamedata/players)
-        ;webgl (dev.reus.rondo.webgl/setup-webgl (count players))]
-        drawing-context (canvas2d/init-drawing-context)]
-    {:keys-pressed [0 0]
-     :refresh-rate 20
-     :start-time (.now js/Date)
-     :current-time (.now js/Date)
-     :frame-time 0
-     :fps-time (.now js/Date)
-     :frame 1
-     :fps 0
-     :drawing-context drawing-context
-     :player-with-ball 0
-     :players players
-     :selected-player nil
-     :teams gamedata/teams
-     :selected-team nil
-     :ui-state nil}))
-
-
 (defn point-in-player? [[x y] player]
   "Determine whether the point (x,y) is part of a player's body."
   (let [player-size (:player-size gamedata/settings)
@@ -109,41 +55,27 @@
         i
         (recur (inc i))))))
 
+(defn reset-position-player [state index]
+  "Reset the position of the selected player."
+  (assoc-in state [:players index :pos] (:pos (get gamedata/players index))))
+
 (defn reset-positions [state]
   "Reset all player's positions."
   state)
 
-(defn reset-position-selected-player [state]
-  "Reset the position of the selected player."
-  (let [index (:selected-player state)]
-    (assoc-in state [:players index :pos] (:pos (get gamedata/players index)))))
-
-(defn random-position-selected-player [state]
+(defn random-position-player [state index]
   "Change player's position to a random position."
-  (let [index (:selected-player state)]
-    (loop []
-      (let [x (+ 5 (rand-int 391))
-            y (+ 5 (rand-int 391))
-            p1 [(- x 5) (- y 5)]
-            p2 [(+ x 5) (- y 5)]
-            p3 [(+ x 5) (+ y 5)]
-            p4 [(- x 5) (+ y 5)]
-            ts (remove #(or (= % index) (false? %)) (map #(point-in-player? %1 state) [p1 p2 p3 p4]))]
-        (if (pos? (count ts))
-          (recur)
-          (assoc-in state [:players index :pos] [x y]))))))
-
-(defn randomize-positions [state]
-  "Randomize all player's positions"
-  (let [players (loop [i 0 ps (:players state) positions #{}]
-                  (if-let [p (get ps i)]
-                    (let [x (+ 5 (* 10 (rand-int 40)))
-                          y (+ 5 (* 10 (rand-int 56)))]
-                      (if (contains? positions [x y])
-                        (recur i ps positions)
-                        (recur (inc i) (assoc-in ps [i :pos] [x y]) (conj positions [x y]))))
-                    ps))]
-    (assoc state :players players)))
+  (loop []
+    (let [x (+ 5 (rand-int 391))
+          y (+ 5 (rand-int 391))
+          p1 [(- x 5) (- y 5)]
+          p2 [(+ x 5) (- y 5)]
+          p3 [(+ x 5) (+ y 5)]
+          p4 [(- x 5) (+ y 5)]
+          ts (remove #(or (= % index) (false? %)) (map #(point-in-player? %1 state) [p1 p2 p3 p4]))]
+      (if (pos? (count ts))
+        (recur)
+        (assoc-in state [:players index :pos] [x y])))))
 
 (defn ui-select-team [state t]
   "Set team t as selected in game state."
@@ -155,16 +87,9 @@
 
 (defn move-player-fn [dt]
   "update velocity and position for player."
-  (fn [{acc :acceleration vel :velocity rot :rotation pos :pos :as player}]
-    (let [vel2 (mapv + vel (map #(* dt %) acc))
-          vel-magn (magnitude vel2)
-          vel-norm (normalize vel2)
-          dir (map #(/ % 50) (get directions rot))
-          new-dir (map + vel-norm dir)
-          new-dir-norm (normalize new-dir)
-          new-vel (mapv #(* % vel-magn) new-dir-norm)
-          new-pos (mapv + pos (map #(* dt %) new-vel))]
-      (assoc player :velocity new-vel :pos new-pos))))
+  (fn [{vel :velocity pos :pos :as player}]
+    (let [new-pos (mapv + pos (map #(* dt %) vel))]
+      (assoc player :pos new-pos))))
 
 (defn move-players [{players :players :as state}]
   (let [move-player (move-player-fn (:frame-time state))]

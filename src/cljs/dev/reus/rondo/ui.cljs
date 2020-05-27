@@ -1,25 +1,27 @@
 (ns dev.reus.rondo.ui
   (:require [dev.reus.rondo.utils :refer [by-id]]
             [dev.reus.rondo.gamedata :as gamedata]
-            [dev.reus.rondo.model :refer [init-players
-                                          point-in-players?
-                                          reset-position-selected-player
-                                          random-position-selected-player]]
+            [dev.reus.rondo.model :refer [point-in-players?
+                                          reset-position-player
+                                          random-position-player]]
             [cljs.core.async :as async :refer [chan put!]]
             [reagent.core :as reagent]
             [reagent.dom :as rdom]))
 
 (defonce signal (reagent/atom {}))
+(defonce ui-state (reagent/atom {:selected-player nil
+                                 :selected-team nil
+                                 :teams nil
+                                 :players nil
+                                 :fps nil
+                                 }))
 
-(defonce ui-state (reagent/atom {}))
-
-(comment
-(defn swap-state! [swap-fn & args]
-  "Helper function to update state and send signal to channel."
-  (doseq [a (partition 2 args)]
-    ((fn [[s v]] (swap! ui-state swap-fn s v)) a))
-  (reset! signal {:type :ui-state-changed}))
-)
+;; define keys-pressed, a vector containing in this order:
+;; * move left/right
+;; * move up/down
+;; * run or walk
+;; * turn
+(defonce keys-pressed (atom [0 0 1 0]))
 
 (defn ui-player []
   "Returns ui for handling players."
@@ -48,16 +50,14 @@
                                               (:selected-team state))
                                          "selected team"
                                          "team")
-                                ;:on-click #(swap-state! assoc :selected-team (:id team) :selected-player nil)}
-                                :on-click (fn [e] (reset! signal {:type :select-team :team-id (:id team)}))}
+                                :on-click (fn [_] (swap! ui-state assoc assoc :selected-team (:id team)))}
                            (:name team)]
                       (for [player (filter (comp #{(:id team)} :team) (:players state))]
                         ^{:key player} [:li {:class (if (= (:index player)
                                                            (:selected-player state))
                                                       "selected player"
                                                       "player")
-                                             ;:on-click #(swap-state! assoc :selected-team nil :selected-player (:index player))}
-                                             :on-click (fn [e] (reset! signal {:type :select-player :index (:index player)}))}
+                                             :on-click (fn [_] (swap! ui-state assoc :selected-player (:index player)))}
                                         [:span {:class "nr"} (:nr player)]
                                         [:span {:class "name"} (:name player)]])])]
      [:div.settings
@@ -69,22 +69,54 @@
           [:div "General settings"
            [:input {:type "button" :value "Reset all players"}]]))]]))
 
+(defn process-key [e dir]
+  (case dir
+    :down (case e.key
+            "ArrowLeft" (swap! keys-pressed assoc 0 -1)
+            "ArrowRight" (swap! keys-pressed assoc 0 1)
+            "ArrowUp" (swap! keys-pressed assoc 1 -1)
+            "ArrowDown" (swap! keys-pressed assoc 1 1)
+            "Shift" (swap! keys-pressed assoc 2 3)
+            "PageDown" (swap! keys-pressed assoc 3 1)
+            "PageUp" (swap! keys-pressed assoc 3 2)
+            "Control" (swap! keys-pressed assoc 4 1)
+            ("k" "K") (println @keys-pressed)
+            ("s" "S") (reset! signal {:type :print-state})
+            ("u" "U") (println @ui-state)
+            ("p" "P") (reset! signal {:type :print-player-state})
+            :default)
+    :up (case e.key
+          "ArrowLeft" (swap! keys-pressed assoc 0 0)
+          "ArrowRight" (swap! keys-pressed assoc 0 0)
+          "ArrowUp" (swap! keys-pressed assoc 1 0)
+          "ArrowDown" (swap! keys-pressed assoc 1 0)
+          "Shift" (swap! keys-pressed assoc 2 1)
+          "Control" (swap! keys-pressed assoc 4 0)
+          :default)
+    :default))
+
+(defn get-key-listener [type]
+  (fn [e]
+    (process-key e type)
+    (case e.key
+      ("Shift" "Control" "Alt" "ArrowLeft" "ArrowRight" "ArrowUp" "ArrowDown" "PageUp" "PageDown") (do (.preventDefault e) false)
+      true)))
+
 (defn setup-event-handlers! []
   "Add event listeners."
   (let [canvas (by-id "canvas")]
     (.addEventListener canvas "mousedown" (fn [e] (reset! signal {:type :click :event e})))
-    (.addEventListener js/document "keyup" (fn [e] (reset! signal {:type :keyup :event e})))
-    (.addEventListener js/document "keydown" (fn [e] (reset! signal {:type :keydown :event e})
-                                               (case e.key ("ArrowUp" "ArrowDown") (do (.preventDefault e)) nil)))))
+    (.addEventListener js/document "keyup" (get-key-listener :up))
+    (.addEventListener js/document "keydown" (get-key-listener :down))))
 
-(defn setup-ui [state]
+(defn setup-ui [players teams]
   "Setup the main user interface rendered by Reagent. Creates a core async channel through that offers
    a means to communicate with the game loop. Returns the channel and a reagent atom with ui state."
   (let [ui-chan (chan)
         state-updater (fn []
                         (let [s @signal]
                           (put! ui-chan s)))]
-    (reset! ui-state state)
+    (swap! ui-state assoc :players players :teams teams)
     (rdom/render [get-ui] (by-id "ui"))
     (setup-event-handlers!)
     (reagent/track! state-updater)
