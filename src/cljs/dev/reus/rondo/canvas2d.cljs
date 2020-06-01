@@ -28,9 +28,9 @@
     (.arc ctx x y p-size 0 _2pi)
     (.fill ctx)
     (.beginPath ctx)
-    (if (= (:ball state) (:index p))
+    (if (= (:player (:ball state)) (:index p))
       (do (set! (.-fillStyle ctx) "white")
-          (.arc ctx (+ x xx) (+ y yy) 3 0 _2pi)
+          (.arc ctx (+ x xx) (+ y yy) 4 0 _2pi)
           (.fill ctx))
       (do
         (.moveTo ctx x y)
@@ -45,6 +45,16 @@
       (.stroke ctx))
     ))
 
+(defn draw-ball! [ball ctx]
+  (if-let [[x y] (:pos ball)]
+    (do
+      (.beginPath ctx)
+      (set! (.-fillStyle ctx) "white")
+      (.moveTo ctx x y)
+      (.arc ctx x y 4 0 _2pi)
+      (.fill ctx))))
+
+
 (defn draw-scene! [state]
   (let [{players :players
          drawing-context :drawing-context} state]
@@ -53,4 +63,5 @@
       (set! (.-fillStyle ctx) "green")
       (.fillRect ctx 0 0 pitch-width pitch-height)
       (doseq [p players]
-        (draw-player! p state)))))
+        (draw-player! p state))
+      (draw-ball! (:ball state) (:context (:drawing-context state))))))

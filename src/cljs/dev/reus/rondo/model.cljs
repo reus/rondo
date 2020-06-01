@@ -88,9 +88,25 @@
 (defn move-player-fn [dt]
   "update velocity and position for player."
   (fn [{vel :velocity pos :pos :as player}]
-    (let [new-pos (mapv + pos (map #(* dt %) vel))]
-      (assoc player :pos new-pos))))
+    player))
+ ;   (let [new-pos (mapv + pos (map #(* dt %) vel))]
+ ;     (assoc player :pos new-pos))))
 
 (defn move-players [{players :players :as state}]
   (let [move-player (move-player-fn (:frame-time state))]
     (assoc state :players (mapv move-player players))))
+
+(defn move-ball [{ball :ball :as state}]
+  (let [ke (:ke ball)]
+    (if (pos? ke)
+      (let [dir (:direction ball)
+            vmag (.sqrt js/Math (* ke 2))
+            [vel-x vel-y] (map #(* % vmag) dir)
+            dt (:frame-time state)
+            pos (:pos ball)]
+        (assoc state :ball {:direction dir
+                            :pos (mapv + pos [(* dt vel-x) (* dt vel-y)])
+                            :velocity [vel-x vel-y]
+                            :ke (- ke (* 1 vmag vmag dt))
+                            :player nil}))
+      state)))

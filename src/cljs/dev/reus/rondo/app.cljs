@@ -8,17 +8,6 @@
 
 (enable-console-print!)
 
-(defonce map-keys-to-direction {
-                     [0 0] [0 0]
-                     [0 -1] [0 -1]
-                     [1 -1] [0.7 -0.7]
-                     [1 0] [1 0]
-                     [1 1] [0.7 0.7]
-                     [0 1] [0 1]
-                     [-1 1] [-0.7 0.7]
-                     [-1 0] [-1 0]
-                     [-1 -1] [-0.7 -0.7]})
-
 (defn find-color [team]
   "Determine the shirt-color of a team. Use a keyword."
   (loop [i 0]
@@ -39,6 +28,7 @@
             color-str (str "rgb(" r "," g "," b ")")]
         (recur (inc i) (conj p-ext (assoc player
                                           :index i
+                                          :shot false
                                           :color color
                                           :color-str color-str))))
       p-ext)))
@@ -57,10 +47,11 @@
      :fps 0
      :drawing-context drawing-context
      :ball {
-            :player 3
-            :acc nil
-            :speed nil
-            :position nil
+            :player 1
+            :ke 0 ;; kinetic energy
+            :velocity nil
+            :direction nil
+            :pos nil
             }
      :players players
      :teams gamedata/teams}))
@@ -80,42 +71,75 @@
         new-state (assoc state :current-time next-millis
                          :frame-time (* 0.001 dmillis)
                          :frame next-frame)]
-    (if (> time-since-fps 1000)
+    (if (>= time-since-fps 1000)
       (do
         (swap! ui/ui-state assoc :fps (int (/ 1000 (/ time-since-fps frame))))
         (assoc new-state :frame 1 :fps-time next-millis))
       new-state)))
 
 (defn turn [x y t]
-  (nth ({[0 -1] [[0 -1] [0.7 -0.7] [-0.7 -0.7]]
-         [0.7 -0.7] [[0.7 -0.7] [1 0] [0 -1]]
-         [1 0] [[1 0] [0.7 0.7] [0.7 -0.7]]
-         [0.7 0.7] [[0.7 0.7] [0 1] [1 0]]
-         [0 1] [[0 1] [-0.7 0.7] [0.7 0.7]]
-         [-0.7 0.7] [[-0.7 0.7] [-1 0] [0 1]]
-         [-1 0] [[-1 0] [-0.7 -0.7] [-0.7 0.7]]
-         [-0.7 -0.7] [[-0.7 -0.7] [0 -1] [-1 0]]} [x y]) t))
+  "Turn player based on current direction [x y]
+   and parameter t: 0,false leave direction unchanged
+                    1 turn clockwise
+                    2 turn anti-clockwise
+   In case of False, key has just been pressed, and we
+   are waiting for a KeyUp event"
+  (let [i (or t 0)]
+    (nth ({[0 -1] [[0 -1] [0.7 -0.7] [-0.7 -0.7]]
+           [0.7 -0.7] [[0.7 -0.7] [1 0] [0 -1]]
+           [1 0] [[1 0] [0.7 0.7] [0.7 -0.7]]
+           [0.7 0.7] [[0.7 0.7] [0 1] [1 0]]
+           [0 1] [[0 1] [-0.7 0.7] [0.7 0.7]]
+           [-0.7 0.7] [[-0.7 0.7] [-1 0] [0 1]]
+           [-1 0] [[-1 0] [-0.7 -0.7] [-0.7 0.7]]
+           [-0.7 -0.7] [[-0.7 -0.7] [0 -1] [-1 0]]} [x y]) i)))
 
 (defn process-selected-player-keys [state]
-  "If a player is selected, update it's direction and velocity based
-   on the (arrow) keys pressed."
+  "If a player is selected, update the player based
+   on the keys pressed."
   (if-let [p (:selected-player @ui/ui-state)]
     (let [max-acc (get-in state [:players p :max-acc])
-          [x y run t] @ui/keys-pressed
-          [old-x old-y] (get-in state [:players p :direction])
-          dir (get map-keys-to-direction [x y])
-          dt (:frame-trime state)]
-      (swap! ui/keys-pressed assoc 3 0)
+          current-time (:current-time state)
+          [t fw run shot] @ui/keys-pressed
+          s (get-in state [:players p :shot])
+          [player-x player-y] (get-in state [:players p :pos])
+          [old-directionx old-directiony] (get-in state [:players p :direction])
+          dir (turn old-directionx old-directiony t)
+          vel (mapv #(* fw (if (= 1 fw) run 1) max-acc %) dir)
+          dt (:frame-time state)
+          update-shot (fn [state]
+                        (if (= p (get-in state [:ball :player]))
+                          (if shot
+                            (if-not s
+                              (assoc-in state [:players p :shot] current-time)
+                              state)
+                            (if s
+                              (let [ke (* (- current-time s) 100)]
+                                  (-> state
+                                      (assoc :ball {:direction dir
+                                                    :player nil
+                                                    :velocity nil
+                                                    :ke ke
+                                                    :pos [(+ player-x (* 10 (get dir 0)))
+                                                          (+ player-y (* 10 (get dir 1)))]})
+                                      (assoc-in [:players p :shot] false)))
+                              state))
+                          state))]
+      (if (some #{t} '(1 2)) (swap! ui/keys-pressed assoc 0 false))
       (-> state
-          (update-in [:players p :direction] #(if (= [0 0] dir) (turn old-x old-y t) dir))
-          (assoc-in [:players p :velocity] (mapv #(* run max-acc %) dir))))
+          (assoc-in [:players p :direction] dir)
+          (assoc-in [:players p :velocity] vel)
+          (assoc-in [:players p :pos] (mapv + [player-x player-y] (map #(* dt %) vel)))
+          update-shot))
     state))
 
 (defn step [state]
   (-> state
-      (update-time)
-      (process-selected-player-keys)
-      (model/move-players)))
+      update-time
+      process-selected-player-keys
+      model/move-players
+      model/move-ball
+      ))
 
 (defn setup-worker []
   "Create a webworker object and a player channel with which the worker
@@ -150,7 +174,13 @@
     :reset-position (let [i (:index evt)]
                       (println i)
                       state)
+    :give-ball (assoc state :ball {:player (:index evt)
+                                   :velocity nil
+                                   :direction nil
+                                   :ke 0
+                                   :pos nil})
     :print-state (do (println state) state)
+    :print-ball-info (do (println (:ball state)) state)
     :print-player-state (do (println (get-in state [:players (:selected-player @ui/ui-state)])) state)
     state))
 
