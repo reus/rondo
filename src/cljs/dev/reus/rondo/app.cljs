@@ -28,6 +28,9 @@
             color-str (str "rgb(" r "," g "," b ")")]
         (recur (inc i) (conj p-ext (assoc player
                                           :index i
+                                          :next-player (if (= (:team (get players (inc i))) team)
+                                                         (inc i)
+                                                         (:index (first (filter #(= (:team %) team) p-ext))))
                                           :shot false
                                           :color color
                                           :color-str color-str))))
@@ -129,7 +132,6 @@
       (-> state
           (assoc-in [:players p :direction] dir)
           (assoc-in [:players p :velocity] vel)
-          (assoc-in [:players p :pos] (mapv + [player-x player-y] (map #(* dt %) vel)))
           update-shot))
     state))
 
@@ -139,6 +141,8 @@
       process-selected-player-keys
       model/move-players
       model/move-ball
+      ;;model/distance-to-ball
+      model/player-pickup-ball
       ))
 
 (defn setup-worker []
@@ -179,8 +183,30 @@
                                    :direction nil
                                    :ke 0
                                    :pos nil})
+    :change-selected-player-with-ball (if-let [selected-player (:selected-player @ui/ui-state)]
+                                        (let [team (get-in state [:players selected-player :team])]
+                                          (let [team-players (filter #(and (= team (:team %))
+                                                                           (not= selected-player (:index %)))
+                                                                     (:players state))
+                                                pb (:player (:ball state))]
+                                            (if (and pb
+                                                     (some #{pb} (map #(:index %) team-players)))
+                                              (do (swap! ui/ui-state assoc :selected-player pb)
+                                                  state)
+                                              state)))
+                                        state)
+    :change-selected-player (if-let [selected-player (:selected-player @ui/ui-state)]
+                              (let [team (get-in state [:players selected-player :team])]
+                                (let [team-players (filter #(and (= team (:team %))
+                                                                 (not= selected-player (:index %)))
+                                                           (:players state))]
+                                  (do (swap! ui/ui-state assoc :selected-player
+                                             (get-in state [:players selected-player :next-player]))
+                                      state)))
+                              state)
     :print-state (do (println state) state)
     :print-ball-info (do (println (:ball state)) state)
+    :print-test-info (do (println state) state)
     :print-player-state (do (println (get-in state [:players (:selected-player @ui/ui-state)])) state)
     state))
 

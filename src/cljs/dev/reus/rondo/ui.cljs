@@ -82,8 +82,11 @@
             ("z" "Z") (swap! keys-pressed assoc 3 true)
             ("k" "K") (println @keys-pressed)
             ("s" "S") (reset! signal {:type :print-state})
+            ("c") (reset! signal {:type :change-selected-player})
+            ("C") (reset! signal {:type :change-selected-player-with-ball})
             ("u" "U") (println @ui-state)
             ("p" "P") (reset! signal {:type :print-player-state})
+            ("t" "T") (reset! signal {:type :print-test-info})
             ("b" "B") (reset! signal {:type :print-ball-info})
             :default)
     :up (case e.key

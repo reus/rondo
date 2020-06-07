@@ -1,7 +1,10 @@
 (ns dev.reus.rondo.gamedata)
 
 (defonce settings {:pitch-size [400 400]
-                   :player-size 5})
+                   :player-radius 5
+                   :ball-radius 3
+                   :distance-to-ball 1
+                   })
 
 (defonce teams
            [{:name "Germany"
@@ -18,6 +21,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
+               :reach 10
                :team :nl
                :nr 1}
               {:name "R. Koeman"
@@ -26,6 +30,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
+               :reach 10
                :team :nl
                :nr 4
                }
@@ -35,6 +40,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
+               :reach 10
                :team :nl
                :nr 6
                }
@@ -44,6 +50,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
+               :reach 10
                :team :de
                :nr 20
                }
@@ -53,6 +60,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :max-acc 10
+               :reach 10
                :team :de
                :nr 11
                }

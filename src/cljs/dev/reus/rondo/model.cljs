@@ -5,15 +5,15 @@
 (defonce keys-pressed [0 0])
 
 (defn dot-product [v1 v2]
-  "Helper function to compute the dot product of two vectors."
+  "Compute the dot product of two vectors."
   (apply + (map * v1 v2)))
 
 (defn magnitude [[vx vy]]
-  "Helper function to compute the magnitude of a vector."
+  "Compute the magnitude of a vector."
   (.sqrt js/Math (+ (* vx vx) (* vy vy))))
 
 (defn normalize [[vx vy]]
-  "Helper function to get the normalized version of a vector."
+  "Get the normalized version of a vector."
   (let [mag (magnitude [vx vy])]
     (if (zero? mag)
       [0 0]
@@ -33,12 +33,12 @@
 
 (defn point-in-player? [[x y] player]
   "Determine whether the point (x,y) is part of a player's body."
-  (let [player-size (:player-size gamedata/settings)
-        ab [(* 2 player-size) 0]
-        bc [0 (* 2 player-size)]
+  (let [player-radius (:player-radius gamedata/settings)
+        ab [(* 2 player-radius) 0]
+        bc [0 (* 2 player-radius)]
         [x-player y-player] (:pos player)
-        pa [(- x-player player-size) (- y-player player-size)]
-        pb [(+ x-player player-size) (- y-player player-size)]
+        pa [(- x-player player-radius) (- y-player player-radius)]
+        pb [(+ x-player player-radius) (- y-player player-radius)]
         am (map - [x y] pa)
         bm (map - [x y] pb)]
     (and (<= 0 (dot-product ab am))
@@ -88,9 +88,8 @@
 (defn move-player-fn [dt]
   "update velocity and position for player."
   (fn [{vel :velocity pos :pos :as player}]
-    player))
- ;   (let [new-pos (mapv + pos (map #(* dt %) vel))]
- ;     (assoc player :pos new-pos))))
+    (let [new-pos (mapv + pos (map #(* dt %) vel))]
+      (assoc player :pos new-pos))))
 
 (defn move-players [{players :players :as state}]
   (let [move-player (move-player-fn (:frame-time state))]
@@ -110,3 +109,64 @@
                             :ke (- ke (* 1 vmag vmag dt))
                             :player nil}))
       state)))
+
+(defn collision? [x1 y1 r1 x2 y2 r2]
+  (<= (+ (* (- x2 x1) (- x2 x1))
+         (* (- y2 y1) (- y2 y1)))
+      (* (+ r1 r2) (+ r1 r2))))
+
+(defn distance-between-circles [x1 y1 r1 x2 y2 r2]
+ (- (.sqrt js/Math (+ (* (- x2 x1) (- x2 x1)) (* (- y2 y1) (- y2 y1)))) r1 r2))
+
+(defn distance-to-ball [{ball :ball players :players :as state}]
+  (let [player-with-ball (:player ball)
+        [x-ball y-ball] (if (nil? player-with-ball)
+                          (:pos ball)
+                          (let [p (get players player-with-ball)
+                                ball-radius (:ball-radius gamedata/settings)
+                                player-radius (:player-radius gamedata/settings)
+                                d (:distance-to-ball gamedata/settings)
+                                [p-x p-y] (:pos p)
+                                [pd-x pd-y] (:direction p)]
+                            [(+ p-x (* pd-x (+ d ball-radius player-radius)))
+                             (+ p-y (* pd-y (+ d ball-radius player-radius)))]))
+        r-ball (:ball-radius gamedata/settings)
+        r-player (:player-radius gamedata/settings)
+        update-distance-to-ball (fn [p]
+                                  (if (= (:index p) player-with-ball)
+                                    (assoc p :distance-to-ball 0)
+                                    (let [[x-player y-player] (:pos p)]
+                                      (assoc p :distance-to-ball (distance-between-circles x-player
+                                                                                         y-player
+                                                                                         r-player
+                                                                                         x-ball
+                                                                                         y-ball
+                                                                                         r-ball)))))]
+    (assoc state :players (mapv update-distance-to-ball players))))
+
+(defn pickup? [x y reach dir-x dir-y x-ball y-ball ball-radius]
+  (let [distance (distance-between-circles x y reach x-ball y-ball ball-radius)]
+    (if (<= distance 0)
+      (let [proj-mag (dot-product [(- x-ball x) (- y-ball y)] [dir-x dir-y])]
+        (cond
+          (>= proj-mag 0) true
+          :else false))
+      false)))
+
+
+(defn player-pickup-ball [{ball :ball players :players :as state}]
+  (let [[x-ball y-ball] (:pos ball)
+        ball-radius (:ball-radius gamedata/settings)]
+    (loop [i 0]
+      (if-let [player (get players i)]
+        (let [[x y] (:pos player)
+              [dir-x dir-y] (:direction player)
+              reach (:reach player)
+              pickup (pickup? x y reach dir-x dir-y x-ball y-ball ball-radius)]
+          (if pickup
+            (assoc state :ball {:player i :velocity nil :direction nil :ke 0 :pos nil})
+            (recur (inc i))))
+        state))))
+
+
+

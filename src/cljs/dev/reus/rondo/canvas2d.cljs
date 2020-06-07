@@ -16,8 +16,10 @@
 
 (defn draw-player! [p state]
   (let [[x y] (:pos p)
-        [xx yy] (map #(* % 10) (:direction p))
-        p-size (:player-size gamedata/settings)
+        player-radius (:player-radius gamedata/settings)
+        ball-radius (:ball-radius gamedata/settings)
+        [xx yy] (map #(* % (:reach p)) (:direction p))
+        [xxx yyy] (map #(* % (+ player-radius ball-radius (:distance-to-ball gamedata/settings))) (:direction p))
         selected-player (get @ui/ui-state :selected-player)
         ctx (:context (:drawing-context state))]
     (set! (.-fillStyle ctx) (:color-str p))
@@ -25,12 +27,12 @@
     (set! (.-strokeStyle ctx) (:color-str p))
     (set! (.-imageSmoothingEnabled ctx) false)
     (.beginPath ctx)
-    (.arc ctx x y p-size 0 _2pi)
+    (.arc ctx x y player-radius 0 _2pi)
     (.fill ctx)
     (.beginPath ctx)
     (if (= (:player (:ball state)) (:index p))
       (do (set! (.-fillStyle ctx) "white")
-          (.arc ctx (+ x xx) (+ y yy) 4 0 _2pi)
+          (.arc ctx (+ x xxx) (+ y yyy) ball-radius 0 _2pi)
           (.fill ctx))
       (do
         (.moveTo ctx x y)
@@ -39,7 +41,7 @@
     (when (= (:index p) selected-player)
       (.moveTo ctx x y)
       (.beginPath ctx)
-      (.arc ctx x y p-size 0 _2pi)
+      (.arc ctx x y player-radius 0 _2pi)
       (set! (.-lineWidth ctx) 2)
       (set! (.-strokeStyle ctx) "black")
       (.stroke ctx))
@@ -51,7 +53,7 @@
       (.beginPath ctx)
       (set! (.-fillStyle ctx) "white")
       (.moveTo ctx x y)
-      (.arc ctx x y 4 0 _2pi)
+      (.arc ctx x y (:ball-radius gamedata/settings) 0 _2pi)
       (.fill ctx))))
 
 
