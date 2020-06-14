@@ -149,10 +149,9 @@
     (if (<= distance 0)
       (let [proj-mag (dot-product [(- x-ball x) (- y-ball y)] [dir-x dir-y])]
         (cond
-          (>= proj-mag 0) true
+          (>= proj-mag (* 0.5 reach)) true
           :else false))
       false)))
-
 
 (defn player-pickup-ball [{ball :ball players :players :as state}]
   (let [[x-ball y-ball] (:pos ball)

@@ -16,7 +16,7 @@
 
 (defonce players [
               {:name "Van Breukelen"
-               :pos [190 16]
+               :pos [190 36]
                :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
