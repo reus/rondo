@@ -17,28 +17,21 @@
         (recur (inc i)))
       [0 0 0])))
 
-(defn init-players [players]
+(defn init-player [idx player]
   "Initialize player vector. Adds different game related
    properties to each player hashmap."
-  (loop [i 0 p-ext []]
-    (if-let [player (get players i)]
-      (let [team (:team player)
-            color (find-color team)
-            [r g b] (map #(* 256 %) color)
-            color-str (str "rgb(" r "," g "," b ")")]
-        (recur (inc i) (conj p-ext (assoc player
-                                          :index i
-                                          :next-player (if (= (:team (get players (inc i))) team)
-                                                         (inc i)
-                                                         (:index (first (filter #(= (:team %) team) p-ext))))
-                                          :shot false
-                                          :color color
-                                          :color-str color-str))))
-      p-ext)))
+  (let [team (:team player)
+        color (find-color team)
+        [r g b] (map #(* 256 %) color)
+        color-str (str "rgb(" r "," g "," b ")")]
+    (assoc player
+           :index idx
+           :color color
+           :color-str color-str)))
 
 (defn init-state []
   "Create the initial state hashmap."
-  (let [players (init-players gamedata/players)
+  (let [players (map-indexed init-player gamedata/players)
                 ;webgl (dev.reus.rondo.webgl/setup-webgl (count players))]
         drawing-context (canvas2d/init-drawing-context)]
     {:refresh-rate 20
@@ -80,65 +73,59 @@
         (assoc new-state :frame 1 :fps-time next-millis))
       new-state)))
 
-(defn turn [x y t]
-  "Turn player based on current direction [x y]
-   and parameter t: 0,false leave direction unchanged
-                    1 turn clockwise
-                    2 turn anti-clockwise
-   In case of False, key has just been pressed, and we
-   are waiting for a KeyUp event"
-  (let [i (or t 0)]
-    (nth ({[0 -1] [[0 -1] [0.7 -0.7] [-0.7 -0.7]]
-           [0.7 -0.7] [[0.7 -0.7] [1 0] [0 -1]]
-           [1 0] [[1 0] [0.7 0.7] [0.7 -0.7]]
-           [0.7 0.7] [[0.7 0.7] [0 1] [1 0]]
-           [0 1] [[0 1] [-0.7 0.7] [0.7 0.7]]
-           [-0.7 0.7] [[-0.7 0.7] [-1 0] [0 1]]
-           [-1 0] [[-1 0] [-0.7 -0.7] [-0.7 0.7]]
-           [-0.7 -0.7] [[-0.7 -0.7] [0 -1] [-1 0]]} [x y]) i)))
+(defn update-acceleration [player fw]
+  (let [direction (:direction player)
+        speed (:speed player)]
+    (assoc player :acceleration (mapv #(* % speed 4 fw) direction))))
 
-(defn process-selected-player-keys [state]
-  "If a player is selected, update the player based
-   on the keys pressed."
-  (if-let [p (:selected-player @ui/ui-state)]
-    (let [max-acc (get-in state [:players p :max-acc])
-          current-time (:current-time state)
-          [t fw run shot] @ui/keys-pressed
-          s (get-in state [:players p :shot])
-          [player-x player-y] (get-in state [:players p :pos])
-          [old-directionx old-directiony] (get-in state [:players p :direction])
-          dir (turn old-directionx old-directiony t)
-          vel (mapv #(* fw (if (= 1 fw) run 1) max-acc %) dir)
-          dt (:frame-time state)
-          update-shot (fn [state]
-                        (if (= p (get-in state [:ball :player]))
-                          (if shot
-                            (if-not s
-                              (assoc-in state [:players p :shot] current-time)
-                              state)
-                            (if s
-                              (let [ke (* (- current-time s) 100)]
-                                  (-> state
-                                      (assoc :ball {:direction dir
-                                                    :player nil
-                                                    :velocity nil
-                                                    :ke ke
-                                                    :pos [(+ player-x (* 10 (get dir 0)))
-                                                          (+ player-y (* 10 (get dir 1)))]})
-                                      (assoc-in [:players p :shot] false)))
-                              state))
-                          state))]
-      (if (some #{t} '(1 2)) (swap! ui/keys-pressed assoc 0 false))
-      (-> state
-          (assoc-in [:players p :direction] dir)
-          (assoc-in [:players p :velocity] vel)
-          update-shot))
-    state))
+(defn update-direction [player xf yf]
+  (let [direction (:direction player)
+        acceleration (:acceleration player)
+        [vx vy] (:velocity player)]
+    (if (pos? (model/magnitude [vx vy]))
+      (let [ca (map #(* % 30) (model/normalize (map * [xf yf] [vy vx])))]
+        (assoc player :acceleration (mapv + acceleration ca)))
+      player)))
+
+(defn update-shot [ball shot current-time player]
+  (let [dir (:direction player)
+        pos (:pos player)
+        s (:shot ball)]
+    (if shot
+      (if-not s
+        (assoc ball :shot current-time)
+        ball)
+      (if s
+        (let [ke (* (- current-time s) 100)]
+          {:shot false
+           :direction dir
+           :player nil
+           :velocity nil
+           :ke ke
+           :pos (mapv + pos (map #(* % 10) dir))})
+        ball))))
+
+(defn game-controls [state]
+  (let [p (:selected-player @ui/ui-state)]
+    (if-let [player (get-in state [:players p])]
+      (let [[xf yf fw shot] @ui/keys-pressed
+            ball (:ball state)
+            pb (:player ball)
+            current-time (:current-time state)
+            new-player (-> player
+                           (update-acceleration fw)
+                           (update-direction xf yf))]
+            (-> state
+                (assoc-in [:players p] new-player)
+                (assoc :ball (if (= pb p)
+                               (update-shot ball shot current-time new-player)
+                               ball))))
+        state)))
 
 (defn step [state]
   (-> state
       update-time
-      process-selected-player-keys
+      game-controls
       model/move-players
       model/move-ball
       ;;model/distance-to-ball
@@ -172,12 +159,14 @@
                (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
                (swap! ui/ui-state assoc :selected-player nil :selected-team nil))
              state)
+    :reset-all (init-state)
     :random-position (let [i (:index evt)]
-                      (println i)
                       state)
-    :reset-position (let [i (:index evt)]
-                      (println i)
-                      state)
+    :reset-position (let [i (:index evt)
+                          player (get-in state [:players i])
+                          pos (get-in gamedata/players [i :pos])
+                          reset (assoc player :pos pos :acceleration [0 0] :velocity [0 0])]
+                      (assoc-in state [:players i] reset))
     :give-ball (assoc state :ball {:player (:index evt)
                                    :velocity nil
                                    :direction nil
@@ -196,13 +185,16 @@
                                               state)))
                                         state)
     :change-selected-player (if-let [selected-player (:selected-player @ui/ui-state)]
-                              (let [team (get-in state [:players selected-player :team])]
-                                (let [team-players (filter #(and (= team (:team %))
-                                                                 (not= selected-player (:index %)))
-                                                           (:players state))]
-                                  (do (swap! ui/ui-state assoc :selected-player
-                                             (get-in state [:players selected-player :next-player]))
-                                      state)))
+                              (let [team (get-in state [:players selected-player :team])
+                                    index (get-in state [:players selected-player :index])]
+                                (let [team-players (map #(:index %) (filter #(and (= team (:team %))
+                                                                                  (not= selected-player (:index %)))
+                                                                            (:players state)))]
+                                  (do
+                                    (if (some #{(inc index)} team-players)
+                                      (swap! ui/ui-state assoc :selected-player (inc index))
+                                      (swap! ui/ui-state assoc :selected-player (first team-players)))
+                                    state)))
                               state)
     :print-state (do (println state) state)
     :print-ball-info (do (println (:ball state)) state)

@@ -17,11 +17,10 @@
                                  }))
 
 ;; define keys-pressed, a vector containing in this order:
-;; 0 turn
-;; 1 forward / backward
-;; 2 run or walk
+;; 0 1 turn
+;; 2 forward / backward
 ;; 3 shoot
-(defonce keys-pressed (atom [0 0 1 false]))
+(defonce keys-pressed (atom [0 0 0 false]))
 
 (defn ui-player []
   "Returns ui for handling players."
@@ -29,7 +28,7 @@
         player-index (:selected-player state)
         player (get (:players state) player-index)]
     [:div
-     [:a {:class "back" :on-click (fn [e] (reset! signal {:type :select-team :team-id nil}))} "Back"]
+     [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
      [:div "name: " (:name player)]
      [:div [:input {:type "button" :value "Reset position" :on-click (fn [e] (reset! signal {:type :reset-position :index player-index}))}]]
      [:div [:input {:type "button" :value "Random position" :on-click (fn [e] (reset! signal {:type :random-position :index player-index}))}]]
@@ -68,17 +67,19 @@
         (if (:selected-team state)
           [ui-team]
           [:div "General settings"
-           [:input {:type "button" :value "Reset all players"}]]))]]))
+           [:input {:type "button" :value "Reset all players" :on-click (fn [e] (reset! signal {:type :reset-all}))}]]))]]))
 
 (defn process-key [e dir]
   (case dir
     :down 
           (case e.key
-            "ArrowLeft" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 2))
-            "ArrowRight" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 1))
-            "ArrowUp" (swap! keys-pressed assoc 1 1)
-            "ArrowDown" (swap! keys-pressed assoc 1 -1)
-            "Shift" (swap! keys-pressed assoc 2 4)
+            ;"ArrowLeft" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 2))
+            ;"ArrowRight" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 1))
+            "ArrowLeft" (swap! keys-pressed assoc 0 1 1 -1)
+            "ArrowRight" (swap! keys-pressed assoc 0 -1 1 1)
+            "ArrowUp" (swap! keys-pressed assoc 2 1)
+            "ArrowDown" (swap! keys-pressed assoc 2 -1)
+            ;"Shift" (swap! keys-pressed assoc 2 4)
             ("z" "Z") (swap! keys-pressed assoc 3 true)
             ("k" "K") (println @keys-pressed)
             ("s" "S") (reset! signal {:type :print-state})
@@ -90,11 +91,11 @@
             ("b" "B") (reset! signal {:type :print-ball-info})
             :default)
     :up (case e.key
-          "ArrowLeft" (swap! keys-pressed assoc 0 0)
-          "ArrowRight" (swap! keys-pressed assoc 0 0)
-          "ArrowUp" (swap! keys-pressed assoc 1 0)
-          "ArrowDown" (swap! keys-pressed assoc 1 0)
-          "Shift" (swap! keys-pressed assoc 2 1)
+          "ArrowLeft" (swap! keys-pressed assoc 0 0 1 0)
+          "ArrowRight" (swap! keys-pressed assoc 0 0 1 0)
+          "ArrowUp" (swap! keys-pressed assoc 2 0)
+          "ArrowDown" (swap! keys-pressed assoc 2 0)
+          ;"Shift" (swap! keys-pressed assoc 2 1)
           ("z" "Z") (swap! keys-pressed assoc 3 false)
           :default)
     :default))
@@ -103,7 +104,7 @@
   (fn [e]
     (process-key e type)
     (case e.key
-      ("Shift" "z" "Z" "Alt" "ArrowLeft" "ArrowRight" "ArrowUp" "ArrowDown" "PageDown" "End") (do (.preventDefault e) false)
+      ("Space" "Shift" "z" "Z" "Alt" "ArrowLeft" "ArrowRight" "ArrowUp" "ArrowDown" "PageDown" "End") (do (.preventDefault e) false)
       true)))
 
 (defn setup-event-handlers! []

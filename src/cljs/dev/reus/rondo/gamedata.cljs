@@ -20,7 +20,7 @@
                :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
-               :max-acc 10
+               :speed 40
                :reach 10
                :team :nl
                :nr 1}
@@ -29,7 +29,7 @@
                :direction [0 -1]
                :velocity [0 0]
                :acceleration [0 0]
-               :max-acc 10
+               :speed 40
                :reach 10
                :team :nl
                :nr 4
@@ -39,7 +39,7 @@
                :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
-               :max-acc 10
+               :speed 40
                :reach 10
                :team :nl
                :nr 6
@@ -49,7 +49,7 @@
                :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
-               :max-acc 10
+               :speed 40
                :reach 10
                :team :de
                :nr 20
@@ -59,7 +59,7 @@
                :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
-               :max-acc 10
+               :speed 40
                :reach 10
                :team :de
                :nr 11

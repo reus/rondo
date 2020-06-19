@@ -87,9 +87,17 @@
 
 (defn move-player-fn [dt]
   "update velocity and position for player."
-  (fn [{vel :velocity pos :pos :as player}]
-    (let [new-pos (mapv + pos (map #(* dt %) vel))]
-      (assoc player :pos new-pos))))
+  (fn [{acc :acceleration vel :velocity pos :pos dir :direction max-speed :speed :as player}]
+    (let [new-vel (mapv + vel (map #(* dt %) acc))
+          magn (magnitude new-vel)
+          new-vel2 (if (< magn max-speed)
+                     new-vel
+                     (map #(* max-speed %) (normalize new-vel)))
+          new-pos (mapv + pos (map #(* dt %) new-vel2))
+          new-dir (if (pos? magn)
+                    (normalize new-vel)
+                    dir)]
+      (assoc player :pos new-pos :velocity new-vel2 :direction new-dir))))
 
 (defn move-players [{players :players :as state}]
   (let [move-player (move-player-fn (:frame-time state))]
