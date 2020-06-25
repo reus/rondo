@@ -73,19 +73,30 @@
         (assoc new-state :frame 1 :fps-time next-millis))
       new-state)))
 
-(defn update-acceleration [player fw]
+(defn update-acceleration [player fw run]
   (let [direction (:direction player)
+        velocity (:velocity player)
+        magn (model/magnitude velocity)
         speed (:speed player)]
-    (assoc player :acceleration (mapv #(* % speed 4 fw) direction))))
+    (assoc player :acceleration (mapv #(* % speed fw run) direction))))
 
 (defn update-direction [player xf yf]
   (let [direction (:direction player)
         acceleration (:acceleration player)
-        [vx vy] (:velocity player)]
-    (if (pos? (model/magnitude [vx vy]))
-      (let [ca (map #(* % 30) (model/normalize (map * [xf yf] [vy vx])))]
-        (assoc player :acceleration (mapv + acceleration ca)))
-      player)))
+        turn (:turn player)
+        [vx vy] (:velocity player)
+        magn (model/magnitude [vx vy])
+        perp (model/normalize (map * [xf yf] [vy vx]))]
+    (cond
+      (>= magn 10) (let [ca (map #(* % turn) perp)]
+                     (assoc player :acceleration (mapv + acceleration ca)))
+      (> magn 0) (let [ca (map #(* % (* 5 magn)) perp)]
+                   (assoc player :acceleration (mapv + acceleration ca)))
+      (= magn 0) (let [[vx vy] direction
+                       ca (map #(* % %2 0.01) [xf yf] [vy vx])]
+                   (assoc player :velocity direction :acceleration (mapv + acceleration ca))))))
+
+
 
 (defn update-shot [ball shot current-time player]
   (let [dir (:direction player)
@@ -108,12 +119,12 @@
 (defn game-controls [state]
   (let [p (:selected-player @ui/ui-state)]
     (if-let [player (get-in state [:players p])]
-      (let [[xf yf fw shot] @ui/keys-pressed
+      (let [[xf yf fw run shot] @ui/keys-pressed
             ball (:ball state)
             pb (:player ball)
             current-time (:current-time state)
             new-player (-> player
-                           (update-acceleration fw)
+                           (update-acceleration fw run)
                            (update-direction xf yf))]
             (-> state
                 (assoc-in [:players p] new-player)
@@ -122,10 +133,21 @@
                                ball))))
         state)))
 
+(defn update-players [state]
+  (let [p (:selected-player @ui/ui-state)
+        update-fn (fn [player]
+                    (if (= p (:index player))
+                      player
+                      (assoc player :acceleration [0 0])))]
+    (assoc state :players (mapv update-fn (:players state)))))
+
+
+
 (defn step [state]
   (-> state
       update-time
       game-controls
+      update-players
       model/move-players
       model/move-ball
       ;;model/distance-to-ball

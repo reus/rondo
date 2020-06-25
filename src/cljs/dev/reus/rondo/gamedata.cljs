@@ -15,31 +15,34 @@
              :color [1.0 0.5 0.0]}])
 
 (defonce players [
-              {:name "Van Breukelen"
+              {:name "R. Koeman"
                :pos [190 36]
                :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
-               :speed 40
+               :speed 80
+               :turn 30
                :reach 10
                :team :nl
-               :nr 1}
-              {:name "R. Koeman"
+               :nr 4}
+              {:name "Vanenburg"
                :pos [320 320]
                :direction [0 -1]
                :velocity [0 0]
                :acceleration [0 0]
-               :speed 40
+               :speed 90
+               :turn 90
                :reach 10
                :team :nl
-               :nr 4
+               :nr 7
                }
               {:name "Van Aerle"
                :pos [44 122]
                :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
-               :speed 40
+               :speed 120
+               :turn 30
                :reach 10
                :team :nl
                :nr 6
@@ -49,7 +52,8 @@
                :direction [0 1]
                :velocity [0 0]
                :acceleration [0 0]
-               :speed 40
+               :speed 110
+               :turn 30
                :reach 10
                :team :de
                :nr 20
@@ -59,7 +63,8 @@
                :direction [0.7 0.7]
                :velocity [0 0]
                :acceleration [0 0]
-               :speed 40
+               :speed 100
+               :turn 30
                :reach 10
                :team :de
                :nr 11

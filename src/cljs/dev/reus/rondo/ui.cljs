@@ -20,7 +20,7 @@
 ;; 0 1 turn
 ;; 2 forward / backward
 ;; 3 shoot
-(defonce keys-pressed (atom [0 0 0 false]))
+(defonce keys-pressed (atom [0 0 0 1 false]))
 
 (defn ui-player []
   "Returns ui for handling players."
@@ -71,7 +71,7 @@
 
 (defn process-key [e dir]
   (case dir
-    :down 
+    :down
           (case e.key
             ;"ArrowLeft" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 2))
             ;"ArrowRight" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 1))
@@ -79,8 +79,8 @@
             "ArrowRight" (swap! keys-pressed assoc 0 -1 1 1)
             "ArrowUp" (swap! keys-pressed assoc 2 1)
             "ArrowDown" (swap! keys-pressed assoc 2 -1)
-            ;"Shift" (swap! keys-pressed assoc 2 4)
-            ("z" "Z") (swap! keys-pressed assoc 3 true)
+            "Shift" (swap! keys-pressed assoc 3 6)
+            ("z" "Z") (swap! keys-pressed assoc 4 true)
             ("k" "K") (println @keys-pressed)
             ("s" "S") (reset! signal {:type :print-state})
             ("c") (reset! signal {:type :change-selected-player})
@@ -95,8 +95,8 @@
           "ArrowRight" (swap! keys-pressed assoc 0 0 1 0)
           "ArrowUp" (swap! keys-pressed assoc 2 0)
           "ArrowDown" (swap! keys-pressed assoc 2 0)
-          ;"Shift" (swap! keys-pressed assoc 2 1)
-          ("z" "Z") (swap! keys-pressed assoc 3 false)
+          "Shift" (swap! keys-pressed assoc 3 1)
+          ("z" "Z") (swap! keys-pressed assoc 4 false)
           :default)
     :default))
 
