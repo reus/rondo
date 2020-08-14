@@ -4,6 +4,7 @@
                    :player-radius 5
                    :ball-radius 3
                    :distance-to-ball 1
+                   :distance-to-side 10
                    })
 
 (defonce teams
@@ -21,7 +22,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 80
-               :turn 30
+               :turn 10
                :reach 10
                :team :nl
                :nr 4}
@@ -31,7 +32,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 90
-               :turn 90
+               :turn 15
                :reach 10
                :team :nl
                :nr 7
@@ -42,7 +43,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 120
-               :turn 30
+               :turn 10
                :reach 10
                :team :nl
                :nr 6
@@ -53,7 +54,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 110
-               :turn 30
+               :turn 10
                :reach 10
                :team :de
                :nr 20
@@ -64,7 +65,7 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 100
-               :turn 30
+               :turn 10
                :reach 10
                :team :de
                :nr 11

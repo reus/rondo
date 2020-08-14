@@ -1,3 +1,7 @@
+html {
+    font-size: 0.7em;
+}
+
 a {
     cursor: pointer;
     color: #222299;

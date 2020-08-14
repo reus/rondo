@@ -79,7 +79,7 @@
             "ArrowRight" (swap! keys-pressed assoc 0 -1 1 1)
             "ArrowUp" (swap! keys-pressed assoc 2 1)
             "ArrowDown" (swap! keys-pressed assoc 2 -1)
-            "Shift" (swap! keys-pressed assoc 3 6)
+            "Shift" (swap! keys-pressed assoc 3 5)
             ("z" "Z") (swap! keys-pressed assoc 4 true)
             ("k" "K") (println @keys-pressed)
             ("s" "S") (reset! signal {:type :print-state})

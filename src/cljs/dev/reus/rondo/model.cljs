@@ -94,7 +94,8 @@
           new-pos (mapv + pos (map #(* dt %) new-vel))
           new-dir (if (not= [0 0] new-vel)
                     (normalize new-vel)
-                    dir)]
+                    (do (if (= (:index player) 1) (println "0 0"))
+                    dir))]
       (assoc player :pos new-pos :velocity new-vel :direction new-dir :acceleration new-acc))))
 
 (defn move-players [{players :players :as state}]
@@ -102,19 +103,27 @@
     (assoc state :players (mapv move-player players))))
 
 (defn move-ball [{ball :ball :as state}]
-  (let [ke (:ke ball)]
-    (if (pos? ke)
-      (let [dir (:direction ball)
-            vmag (.sqrt js/Math (* ke 2))
-            [vel-x vel-y] (map #(* % vmag) dir)
-            dt (:frame-time state)
-            pos (:pos ball)]
-        (assoc state :ball {:direction dir
-                            :pos (mapv + pos [(* dt vel-x) (* dt vel-y)])
-                            :velocity [vel-x vel-y]
-                            :ke (- ke (* 1 vmag vmag dt))
-                            :player nil}))
-      state)))
+  (if-let [p (:player ball)]
+    (let [p-pos (get-in state [:players p :pos])
+          p-direction (get-in state [:players p :direction])]
+      (let [new-pos (mapv + p-pos (map #(* % (+ (:player-radius gamedata/settings)
+                                                (:ball-radius gamedata/settings)
+                                                (:distance-to-ball gamedata/settings))) p-direction))]
+        (assoc-in state [:ball :pos] new-pos)))
+    (let [ke (:ke ball)]
+      (if (pos? ke)
+        (let [dir (:direction ball)
+              vmag (.sqrt js/Math (* ke 2))
+              [vel-x vel-y] (map #(* % vmag) dir)
+              dt (:frame-time state)
+              pos (:pos ball)
+              new-position (mapv + pos [(* dt vel-x) (* dt vel-y)])]
+          (assoc state :ball {:direction dir
+                              :pos new-position
+                              :velocity [vel-x vel-y]
+                              :ke (- ke (* 1 vmag vmag dt))
+                              :player nil}))
+        state))))
 
 (defn collision? [x1 y1 r1 x2 y2 r2]
   (<= (+ (* (- x2 x1) (- x2 x1))
@@ -160,18 +169,24 @@
       false)))
 
 (defn player-pickup-ball [{ball :ball players :players :as state}]
-  (let [[x-ball y-ball] (:pos ball)
-        ball-radius (:ball-radius gamedata/settings)]
-    (loop [i 0]
-      (if-let [player (get players i)]
-        (let [[x y] (:pos player)
-              [dir-x dir-y] (:direction player)
-              reach (:reach player)
-              pickup (pickup? x y reach dir-x dir-y x-ball y-ball ball-radius)]
-          (if pickup
-            (assoc state :ball {:player i :velocity nil :direction nil :ke 0 :pos nil})
-            (recur (inc i))))
-        state))))
+  (if (nil? (:player ball))
+    (let [[x-ball y-ball] (:pos ball)
+          ball-radius (:ball-radius gamedata/settings)]
+      (loop [i 0]
+        (if-let [player (get players i)]
+          (let [[x y] (:pos player)
+                [dir-x dir-y] (:direction player)
+                reach (:reach player)
+                pickup (pickup? x y reach dir-x dir-y x-ball y-ball ball-radius)]
+            (if pickup
+              (let [new-pos (mapv + [x y] (map #(* % (+ (:player-radius gamedata/settings)
+                                                        ball-radius
+                                                        (:distance-to-ball gamedata/settings))) [dir-x dir-y]))]
+                (assoc state :ball {:player i :velocity nil :direction nil :ke 0 :pos new-pos}))
+              (recur (inc i))))
+          state)))
+    state))
+
 
 
 

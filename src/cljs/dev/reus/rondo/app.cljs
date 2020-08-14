@@ -80,23 +80,30 @@
         speed (:speed player)]
     (assoc player :acceleration (mapv #(* % speed fw run) direction))))
 
-(defn update-direction [player xf yf]
+(defn update-direction [player xf yf run]
   (let [direction (:direction player)
-        acceleration (:acceleration player)
         turn (:turn player)
-        [vx vy] (:velocity player)
+        [vx vy] (if (= (:velocity player) [0 0]) direction (:velocity player))
         magn (model/magnitude [vx vy])
-        perp (model/normalize (map * [xf yf] [vy vx]))]
-    (cond
-      (>= magn 10) (let [ca (map #(* % turn) perp)]
-                     (assoc player :acceleration (mapv + acceleration ca)))
-      (> magn 0) (let [ca (map #(* % (* 5 magn)) perp)]
-                   (assoc player :acceleration (mapv + acceleration ca)))
-      (= magn 0) (let [[vx vy] direction
-                       ca (map #(* % %2 0.01) [xf yf] [vy vx])]
-                   (assoc player :velocity direction :acceleration (mapv + acceleration ca))))))
+        perp (model/normalize (map * [xf yf] [vy vx]))
+        acceleration (:acceleration player)]
+    ;(println (map #(* magn run %) perp))
+    ;(println acceleration)
+
+    (if (> magn 10)
+      (let [ca (map #(* magn %) perp)] (assoc player :acceleration (mapv + acceleration ca)))
+      (let [ca (map #(* magn run %) perp)] (assoc player :acceleration (mapv + acceleration ca))))))
 
 
+
+;    (cond
+;      (and (> magn 0) (> run 1)) (let [ca (map #(* % (min run 2) turn) perp)]
+;                     (assoc player :acceleration (mapv + acceleration ca)))
+;      (and (> magn 0) (= run 1)) (let [ca (map #(* % (* magn (max 3 run))) perp)]
+;                   (assoc player :acceleration (mapv + acceleration ca)))
+;      (= magn 0) (let [[vx vy] direction
+;                       ca (map #(* % %2 run) [xf yf] [vy vx])]
+;                   (assoc player :acceleration (mapv + acceleration ca))))))
 
 (defn update-shot [ball shot current-time player]
   (let [dir (:direction player)
@@ -125,7 +132,7 @@
             current-time (:current-time state)
             new-player (-> player
                            (update-acceleration fw run)
-                           (update-direction xf yf))]
+                           (update-direction xf yf run))]
             (-> state
                 (assoc-in [:players p] new-player)
                 (assoc :ball (if (= pb p)
@@ -141,8 +148,6 @@
                       (assoc player :acceleration [0 0])))]
     (assoc state :players (mapv update-fn (:players state)))))
 
-
-
 (defn step [state]
   (-> state
       update-time
@@ -151,8 +156,7 @@
       model/move-players
       model/move-ball
       ;;model/distance-to-ball
-      model/player-pickup-ball
-      ))
+      model/player-pickup-ball))
 
 (defn setup-worker []
   "Create a webworker object and a player channel with which the worker

@@ -5,9 +5,6 @@
 
 (defonce pi (.-PI js/Math))
 (defonce _2pi (* 2 (.-PI js/Math)))
-(defonce _3pi (* 3 (.-PI js/Math)))
-(defonce _5pi (* 5 (.-PI js/Math)))
-(defonce _7pi (* 7 (.-PI js/Math)))
 
 (defn init-drawing-context []
   (let [canvas (by-id "canvas")
@@ -30,10 +27,7 @@
     (.arc ctx x y player-radius 0 _2pi)
     (.fill ctx)
     (.beginPath ctx)
-    (if (= (:player (:ball state)) (:index p))
-      (do (set! (.-fillStyle ctx) "white")
-          (.arc ctx (+ x xxx) (+ y yyy) ball-radius 0 _2pi)
-          (.fill ctx))
+    (if (not= (:player (:ball state)) (:index p))
       (do
         (.moveTo ctx x y)
         (.lineTo ctx (+ x xx) (+ y yy))
@@ -59,11 +53,14 @@
 
 (defn draw-scene! [state]
   (let [{players :players
-         drawing-context :drawing-context} state]
-    (let [ctx (:context drawing-context)
-          [pitch-width pitch-height] (:pitch-size dev.reus.rondo.gamedata/settings)]
-      (set! (.-fillStyle ctx) "green")
-      (.fillRect ctx 0 0 pitch-width pitch-height)
-      (doseq [p players]
-        (draw-player! p state))
-      (draw-ball! (:ball state) (:context (:drawing-context state))))))
+         drawing-context :drawing-context} state
+        ctx (:context drawing-context)
+        [pitch-width pitch-height] (:pitch-size dev.reus.rondo.gamedata/settings)]
+    (set! (.-fillStyle ctx) "green")
+    (.fillRect ctx 0 0 pitch-width pitch-height)
+    (set! (.-lineWidth ctx) 1)
+    (set! (.-strokeStyle ctx) "white")
+    (.strokeRect ctx 10 10 (- pitch-width 20) (- pitch-height 20))
+    (doseq [p players]
+      (draw-player! p state))
+    (draw-ball! (:ball state) (:context (:drawing-context state)))))
