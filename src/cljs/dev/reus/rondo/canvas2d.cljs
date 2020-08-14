@@ -55,7 +55,8 @@
   (let [{players :players
          drawing-context :drawing-context} state
         ctx (:context drawing-context)
-        [pitch-width pitch-height] (:pitch-size dev.reus.rondo.gamedata/settings)]
+        [pitch-width pitch-height] (:pitch-size gamedata/settings)
+        d ]
     (set! (.-fillStyle ctx) "green")
     (.fillRect ctx 0 0 pitch-width pitch-height)
     (set! (.-lineWidth ctx) 1)

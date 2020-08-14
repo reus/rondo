@@ -92,10 +92,9 @@
           new-acc (mapv + (map #(* -0.3 magn %) vel) acc)
           new-vel (mapv + vel (map #(* dt %) new-acc))
           new-pos (mapv + pos (map #(* dt %) new-vel))
-          new-dir (if (not= [0 0] new-vel)
-                    (normalize new-vel)
-                    (do (if (= (:index player) 1) (println "0 0"))
-                    dir))]
+          new-dir (if (= [0 0] new-vel)
+                    dir
+                    (normalize new-vel))]
       (assoc player :pos new-pos :velocity new-vel :direction new-dir :acceleration new-acc))))
 
 (defn move-players [{players :players :as state}]
