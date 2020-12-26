@@ -23,16 +23,25 @@
 (defonce keys-pressed (atom [0 0 0 1 false]))
 
 (defn ui-player []
-  "Returns ui for handling players."
+  "Returns reagent ui for handling players."
   (let [state @ui-state
         player-index (:selected-player state)
         player (get (:players state) player-index)]
     [:div
      [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
      [:div "name: " (:name player)]
-     [:div [:input {:type "button" :value "Reset position" :on-click (fn [e] (reset! signal {:type :reset-position :index player-index}))}]]
-     [:div [:input {:type "button" :value "Random position" :on-click (fn [e] (reset! signal {:type :random-position :index player-index}))}]]
-     [:div [:input {:type "button" :value "Give ball" :on-click (fn [e] (reset! signal {:type :give-ball :index player-index}))}]]
+     [:div [:input {:type "button"
+                    :value "Reset position"
+                    :on-click (fn [e]
+                                (reset! signal {:type :reset-position :index player-index}))}]]
+     [:div [:input {:type "button"
+                    :value "Random position"
+                    :on-click (fn [e]
+                                (reset! signal {:type :random-position :index player-index}))}]]
+     [:div [:input {:type "button"
+                    :value "Give ball"
+                    :on-click (fn [e]
+                                (reset! signal {:type :give-ball :index player-index}))}]]
      ]))
 
 (defn ui-team []

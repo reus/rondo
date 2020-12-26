@@ -32,7 +32,7 @@
 (defn init-state []
   "Create the initial state hashmap."
   (let [players (map-indexed init-player gamedata/players)
-                ;webgl (dev.reus.rondo.webgl/setup-webgl (count players))]
+       ;webgl (dev.reus.rondo.webgl/setup-webgl (count players))]
         drawing-context (canvas2d/init-drawing-context)]
     {:refresh-rate 20
      :start-time (.now js/Date)
