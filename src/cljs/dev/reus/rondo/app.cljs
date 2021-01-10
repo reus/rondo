@@ -256,11 +256,11 @@
    * Run the webworker script
    * Start the game loop and binds the webworker code to the player channel."
   (let [state (init-state)
-        ui-channel (ui/setup-ui (mapv #(select-keys % [:index :name :team :nr]) (:players state)) (:teams state))
+        ui-channel (ui/setup-ui state)
         player-channel (setup-worker)]
     (game-loop state ui-channel player-channel)))
 
 (defn on-js-reload []
   "Figwheel convenience function.")
 
-(defonce game (start-game))
+;(defonce game (start-game))

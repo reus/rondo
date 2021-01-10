@@ -2,8 +2,6 @@
   (:require [dev.reus.rondo.gamedata :as gamedata]
             [cljs.pprint :refer [pprint]]))
 
-(defonce keys-pressed [0 0])
-
 (defn dot-product [v1 v2]
   "Compute the dot product of two vectors."
   (apply + (map * v1 v2)))
@@ -18,6 +16,33 @@
     (if (zero? mag)
       [0 0]
       (mapv #(/ % mag) [vx vy]))))
+
+(defn find-color [team]
+  "Determine the shirt-color of a player. Use a team keyword."
+  (loop [i 0]
+    (if-let [t (get gamedata/teams i)]
+      (if (= (:id t) team)
+        (:color t)
+        (recur (inc i)))
+      [0 0 0])))
+
+(defn init-player [idx player]
+  "Initialize player vector. Adds different game related
+   properties to each player hashmap."
+  (let [team (:team player)
+        color (find-color team)
+        [r g b] (map #(* 256 %) color)
+        color-str (str "rgb(" r "," g "," b ")")]
+    (assoc player
+           :index idx
+           :color color
+           :color-str color-str)))
+
+(defn init-players []
+  (map-indexed init-player gamedata/players))
+
+(defn init-teams []
+  gamedata/teams)
 
 (defn print-player-info! [player]
   "Print information of a player."
@@ -185,7 +210,3 @@
               (recur (inc i))))
           state)))
     state))
-
-
-
-

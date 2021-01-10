@@ -13,14 +13,18 @@
                                  :selected-team nil
                                  :teams nil
                                  :players nil
-                                 :fps nil
+                                 :action nil
                                  }))
 
-;; define keys-pressed, a vector containing in this order:
+;; define keys-pressed, an atom that has a vector containing in this order:
 ;; 0 1 turn
 ;; 2 forward / backward
 ;; 3 shoot
 (defonce keys-pressed (atom [0 0 0 1 false]))
+
+(defn update-fps! [fps]
+  "Update the fps of the game"
+  (swap! ui-state assoc :fps (.round js/Math fps)))
 
 (defn ui-player []
   "Returns reagent ui for handling players."
@@ -33,16 +37,39 @@
      [:div [:input {:type "button"
                     :value "Reset position"
                     :on-click (fn [e]
-                                (reset! signal {:type :reset-position :index player-index}))}]]
+                                (swap! ui-state assoc :action {:type :reset-position :index player-index}))}]]
      [:div [:input {:type "button"
                     :value "Random position"
                     :on-click (fn [e]
-                                (reset! signal {:type :random-position :index player-index}))}]]
+                                (swap! ui-state assoc :action {:type :random-position :index player-index}))}]]
      [:div [:input {:type "button"
                     :value "Give ball"
                     :on-click (fn [e]
-                                (reset! signal {:type :give-ball :index player-index}))}]]
+                                (swap! ui-state assoc :action {:type :give-ball :index player-index}))}]]
      ]))
+
+
+; (defn ui-player []
+;   "Returns reagent ui for handling players."
+;   (let [state @ui-state
+;         player-index (:selected-player state)
+;         player (get (:players state) player-index)]
+;     [:div
+;      [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
+;      [:div "name: " (:name player)]
+;      [:div [:input {:type "button"
+;                     :value "Reset position"
+;                     :on-click (fn [e]
+;                                 (reset! signal {:type :reset-position :index player-index}))}]]
+;      [:div [:input {:type "button"
+;                     :value "Random position"
+;                     :on-click (fn [e]
+;                                 (reset! signal {:type :random-position :index player-index}))}]]
+;      [:div [:input {:type "button"
+;                     :value "Give ball"
+;                     :on-click (fn [e]
+;                                 (reset! signal {:type :give-ball :index player-index}))}]]
+;      ]))
 
 (defn ui-team []
   "Returns ui for handling teams."
@@ -70,7 +97,7 @@
                                         [:span {:class "nr"} (:nr player)]
                                         [:span {:class "name"} (:name player)]])])]
      [:div.settings
-      [:div "FPS: " (str (:fps state))]
+      [:div "FPS: " (str (:fps @ui-state))]
       (if (:selected-player state)
         [ui-player]
         (if (:selected-team state)
@@ -123,19 +150,17 @@
     (.addEventListener js/document "keyup" (get-key-listener :up))
     (.addEventListener js/document "keydown" (get-key-listener :down))))
 
-(defn setup-ui [players teams]
-  "Setup the main user interface rendered by Reagent. Creates a core async channel through that offers
-   a means to communicate with the game loop. Returns the channel and a reagent atom with ui state."
+(defn setup-ui [{players :players teams :teams :as state}]
+  "Setup the main user interface rendered by Reagent. Creates a core async channel through
+that offers a means to communicate with the game loop. Returns the channel and a reagent atom
+with ui state."
   (let [ui-chan (chan)
+        players (mapv #(select-keys % [:index :name :team :nr]) players)
         state-updater (fn []
-                        (let [s @signal]
+                        (let [s @ui-state]
                           (put! ui-chan s)))]
     (swap! ui-state assoc :players players :teams teams)
     (rdom/render [get-ui] (by-id "ui"))
     (setup-event-handlers!)
     (reagent/track! state-updater)
     ui-chan))
-
-(defn update-fps! [{:keys [fps]}]
-  "Update the frames per second counter in the ui."
-)
