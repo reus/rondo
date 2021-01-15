@@ -20,7 +20,7 @@
                :pos [190 36]
                :direction [0 1]
                :velocity [0 0]
-               :acceleration [0 0]
+               :acceleration [0 1]
                :speed 80
                :turn 10
                :reach 10

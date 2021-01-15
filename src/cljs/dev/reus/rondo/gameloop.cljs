@@ -88,6 +88,9 @@
     :print-ui-state (do
                       (pprint @ui/ui-state)
                       state)
+    :print-player-info (let [player (get-in state [:players (:index e)])]
+                         (pprint player)
+                         state)
     :click-canvas (let [event (:event e)
                         canvas (.-target event)
                         rect (.getBoundingClientRect canvas)
@@ -95,13 +98,13 @@
                         y (- (.-clientY event) (.-top rect))
                         mouse-selected-player (model/point-in-players? [x y] (:players state))]
                     (if mouse-selected-player
-                      (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
-                      (swap! ui/ui-state assoc :selected-player nil :selected-team nil))
-                    state)
-    :control-player (if-let [selected-player (get @ui/ui-state :selected-player)]
-                      (let [new-player (model/control-player (get-in state [:players selected-player]) (:direction e))]
-                        (assoc-in state [:players selected-player] new-player))
-                      state)
+                      (do
+                        (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
+                        state)
+                      (if-let [selected-player (:selected-player @ui/ui-state)]
+                        (assoc-in state [:players selected-player :goal] {:status :move-destination :destination [x y]})
+                        state)))
+    :goal (update-in state [:players (:index e)] #(assoc % :goal (:goal e)))
     state))
 
 (defn game-loop [state ui-channel player-channel]

@@ -16,6 +16,13 @@
       [0 0]
       (mapv #(/ % mag) [vx vy]))))
 
+(defn distance [p1 p2]
+  (let [[x1 y1] p1
+        [x2 y2] p2
+        dx (- x2 x1)
+        dy (- y2 y1)]
+    (.sqrt js/Math (+ (* dx dx) (* dy dy)))))
+
 (defn find-color [team]
   "Determine the shirt-color of a player. Use a team keyword."
   (loop [i 0]
@@ -33,6 +40,7 @@
         [r g b] (map #(* 256 %) color)
         color-str (str "rgb(" r "," g "," b ")")]
     (assoc player
+           :goal {:status :idle}
            :index idx
            :color color
            :color-str color-str)))
@@ -43,8 +51,35 @@
 (defn init-teams []
   gamedata/teams)
 
-(defn update-players [state]
-  state)
+(defn compute-integrals [{vel :velocity pos :pos dir :direction :as player} acc dt]
+  (let [magn (magnitude vel)
+        new-acc (mapv + (map #(* 250 %) acc) (map #(* -0.3 magn %) vel))
+        new-vel (mapv + vel (map #(* dt %) new-acc))
+        new-pos (mapv + pos (map #(* dt %) new-vel))
+        new-dir (normalize acc)]
+    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :direction new-dir)))
+
+(defn get-update-fn [dt]
+  (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
+    (let [goal (:goal player)]
+      (case (:status goal)
+        :move (let [dir (:direction goal)]
+                (compute-integrals player dir dt))
+        :move-destination (let [dest (:destination goal)
+                                dest-vector (map - dest pos)
+                                norm (normalize dest-vector)
+                                new-player (compute-integrals player norm dt)
+                                vec-new-player-to-dest (map - dest (:pos new-player))]  ;
+                            (if (pos? (dot-product dest-vector vec-new-player-to-dest)) ;check if destination has been reached
+                              new-player
+                              (assoc new-player :pos dest :goal {:status :idle})))
+        :idle (assoc player :acceleration [0 0])
+        player))))
+
+(defn update-players [{players :players :as state}]
+  (let [frame-time (:frame-time state)
+        update-fn (get-update-fn (* frame-time 0.001))]
+    (assoc state :players (mapv update-fn players))))
 
 (defn update-ball [{ball :ball :as state}]
   (if-let [p (:player ball)]
@@ -72,7 +107,8 @@
 (defn reset-position [state i]
   (let [player (get-in state [:players i])
         pos (get-in gamedata/players [i :pos])
-        reset (assoc player :pos pos :acceleration [0 0] :velocity [0 0])
+        dir (get-in gamedata/players [i :direction])
+        reset (assoc player :pos pos :acceleration [0 0] :velocity [0 0] :direction dir :goal {:status :idle})
         new-state (assoc-in state [:players i] reset)]
     new-state))
 
@@ -83,7 +119,7 @@
                            (:pitch-size gamedata/settings))
         new-pos [(+ min-x (int (* max-x (.random js/Math))))
                  (+ min-y (int (* max-y (.random js/Math))))]
-        new-player (assoc player :pos new-pos)
+        new-player (assoc player :pos new-pos :acceleration [0 0] :velocity [0 0] :goal {:status :idle})
         new-state (assoc-in state [:players i] new-player)]
     new-state))
 
@@ -110,7 +146,3 @@
       (if (point-in-player? [x y] player)
         i
         (recur (inc i))))))
-
-(defn control-player [player dir]
-  (println player dir)
-  player)

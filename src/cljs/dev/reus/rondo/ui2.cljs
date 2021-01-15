@@ -16,7 +16,6 @@
   (let [c (get @ui-state :ui-chan)]
     (put! c m)))
 
-
 (defn ui-player [player]
   "Returns reagent ui for handling players."
     [:div
@@ -29,7 +28,22 @@
                     :value "Random position"
                     :on-click (fn [e] (notify-channel! {:type :random-position :index (:index player)}))}]]
      [:div [:input {:type "button"
-                    :value "Give ball"}]]])
+                    :value "Give ball"}]]
+     [:div [:input {:type "button"
+                    :value "Idle"
+                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :idle} :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2191
+                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [0 -1]} :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2190
+                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [-1 0]} :index (:index player)}))}]
+           [:input {:type "button"
+                    :value \u2192
+                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [1 0]} :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2193
+                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [0 1]} :index (:index player)}))}]]])
 
 (defn ui-team []
   "Returns ui for handling teams."
@@ -73,12 +87,13 @@
             "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 1)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
-            ("u" "U") (notify-channel! {:type :print-ui-state :value @ui-state})
+            ("u" "U") (notify-channel! {:type :print-ui-state})
+            ("p" "P") (if-let [p (get @ui-state :selected-player)]
+                        (notify-channel! {:type :print-player-info :index p}))
             :default)
     :up (case e.key
           "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 0)
           :default)
-
     :default))
 
 (defn get-key-listener [type]

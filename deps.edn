@@ -2,12 +2,12 @@
  
  :deps {
         org.clojure/clojure {:mvn/version "1.10.1"}
-        org.clojure/clojurescript {:mvn/version "1.10.597"}
+        org.clojure/clojurescript {:mvn/version "1.10.764"}
         compojure {:mvn/version "1.6.1"}
         ring/ring-jetty-adapter {:mvn/version "1.8.0"}
         org.clojure/core.async {:mvn/version "1.0.567"}
         reagent {:mvn/version "0.10.0"}
-        com.bhauman/figwheel-main {:mvn/version "0.2.3"}}
+        com.bhauman/figwheel-main {:mvn/version "0.2.12"}}
 
  :aliases {:run-clj {:main-opts ["-m" "dev.reus.rondo.core"]}
            :build-cljs {:main-opts ["-m" "cljs.main"
