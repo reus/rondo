@@ -16,12 +16,19 @@
       [0 0]
       (mapv #(/ % mag) [vx vy]))))
 
-(defn distance [p1 p2]
+(defn distance-points [p1 p2]
+  "Give the distance between two coordinates."
   (let [[x1 y1] p1
         [x2 y2] p2
         dx (- x2 x1)
         dy (- y2 y1)]
     (.sqrt js/Math (+ (* dx dx) (* dy dy)))))
+
+(defn distance-circles [p1 r1 p2 r2]
+  (- (distance-points p1 p2) (+ r1 r2)))
+
+(defn circles-overlap? [p1 r1 p2 r2]
+  (< (distance-circles p1 r1 p2 r2) 0))
 
 (defn find-color [team]
   "Determine the shirt-color of a player. Use a team keyword."
@@ -46,18 +53,33 @@
            :color-str color-str)))
 
 (defn init-players []
+  "Initialize player data to be used in gameloop."
   (mapv init-player (range) gamedata/players))
 
 (defn init-teams []
+  "Initialize team data to be used in gameloop."
   gamedata/teams)
 
 (defn compute-integrals [{vel :velocity pos :pos dir :direction :as player} acc dt]
+  "Wit acceleration and time, compute velocity and displacement."
   (let [magn (magnitude vel)
         new-acc (mapv + (map #(* 250 %) acc) (map #(* -0.3 magn %) vel))
         new-vel (mapv + vel (map #(* dt %) new-acc))
         new-pos (mapv + pos (map #(* dt %) new-vel))
         new-dir (normalize acc)]
-    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :direction new-dir)))
+    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir)))
+
+(defn check-player-collision [old-player new-player other-players]
+  "check for a player colliding with another"
+  (let [r (:player-radius gamedata/settings)
+        new-player-position (:pos new-player)
+        other-player-positions (mapv #(select-keys % [:pos]) other-players)]
+    (loop [i 0]
+      (if-let [p (get other-player-positions i)]
+        (if (circles-overlap? new-player-position r p r)
+          (assoc old-player :goal {:status :idle})
+          (recur (inc i)))
+        new-player))))
 
 (defn get-update-fn [dt]
   (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
@@ -69,17 +91,22 @@
                                 dest-vector (map - dest pos)
                                 norm (normalize dest-vector)
                                 new-player (compute-integrals player norm dt)
-                                vec-new-player-to-dest (map - dest (:pos new-player))]  ;
+                                vec-new-player-to-dest (map - dest (:pos new-player))]
                             (if (pos? (dot-product dest-vector vec-new-player-to-dest)) ;check if destination has been reached
                               new-player
-                              (assoc new-player :pos dest :goal {:status :idle})))
-        :idle (assoc player :acceleration [0 0])
+                              (assoc player :acceleration [0 0] :velocity [0 0] :pos dest :prev-pos pos :goal {:status :idle})))
+        :idle (assoc player :acceleration [0 0] :velocity [0 0])
         player))))
 
 (defn update-players [{players :players :as state}]
   (let [frame-time (:frame-time state)
         update-fn (get-update-fn (* frame-time 0.001))]
     (assoc state :players (mapv update-fn players))))
+    ;(loop [ix 0 ps players]
+    ;  (if-let [p (get ps ix)]
+    ;    (let [new-player (update-fn p)]
+    ;      (recur (inc ix) (assoc ps ix (check-player-collision p new-player (filter #(= ix (:index %)) ps)))))
+    ;    (assoc state :players ps)))))
 
 (defn update-ball [{ball :ball :as state}]
   (if-let [p (:player ball)]
@@ -146,3 +173,21 @@
       (if (point-in-player? [x y] player)
         i
         (recur (inc i))))))
+
+
+(defn check-player-collisions [{players :players :as state}]
+  (let [r (:player-radius gamedata/settings)
+        ps (mapv #(select-keys % [:pos :index]) players)
+        positions (for [p ps :let [i (:index p)]]
+                    [p (mapv :pos (filter #(not= (:index %) i) ps))])]
+    (loop [ps positions new-players []]
+      (if-let [x (first ps)]
+        (let [collisions (map #(circles-overlap? (get (first x) :pos) r % r) (last x))]
+          (let [index (get (first x) :index)
+                player (get players index)]
+            (if (some identity collisions)
+              (recur (rest ps) (conj new-players (assoc player :goal {:status :idle}
+                                                        :pos (or (get player :prev-pos)
+                                                                 (get player :pos)))))
+              (recur (rest ps) (conj new-players player)))))
+        (assoc state :players new-players)))))

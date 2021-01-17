@@ -59,6 +59,7 @@
   (-> state
       update-time
       model/update-players
+      model/check-player-collisions
       model/update-ball))
 
 
