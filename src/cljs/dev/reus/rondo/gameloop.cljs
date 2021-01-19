@@ -98,6 +98,7 @@
                         x (- (.-clientX event) (.-left rect))
                         y (- (.-clientY event) (.-top rect))
                         mouse-selected-player (model/point-in-players? [x y] (:players state))]
+                    (println (:event e))
                     (if mouse-selected-player
                       (do
                         (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
