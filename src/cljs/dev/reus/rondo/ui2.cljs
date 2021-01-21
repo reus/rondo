@@ -9,7 +9,7 @@
                                  :teams nil
                                  :players nil
                                  :ui-chan nil
-                                 :keys-pressed [0 0]
+                                 :keys-pressed [0 0 0]
                                  }))
 
 (defn notify-channel! [m]
@@ -19,31 +19,63 @@
 (defn ui-player [player]
   "Returns reagent ui for handling players."
     [:div
-     [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
+     [:a {:class "back" :on-click (fn [_]
+                                    (swap! ui-state assoc :selected-player nil))} "Back"]
      [:div "name: " (:name player)]
      [:div [:input {:type "button"
                     :value "Reset position"
-                    :on-click (fn [e] (notify-channel! {:type :reset-position :index (:index player)}))}]]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :reset-position :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value "Random position"
-                    :on-click (fn [e] (notify-channel! {:type :random-position :index (:index player)}))}]]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :random-position :index (:index player)}))}]]
      [:div [:input {:type "button"
-                    :value "Give ball"}]]
+                    :value "Give ball"
+                    :on-click (fn [e]
+                                (notify-channel! {:type :give-ball
+                                                  :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value "Idle"
-                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :idle} :index (:index player)}))}]]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :idle}
+                                                  :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2191
-                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [0 -1]} :index (:index player)}))}]]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move
+                                                         :direction [0 -1]}
+                                                  :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2190
-                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [-1 0]} :index (:index player)}))}]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move
+                                                         :direction [-1 0]}
+                                                  :index (:index player)}))}]
            [:input {:type "button"
                     :value \u2192
-                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [1 0]} :index (:index player)}))}]]
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move
+                                                         :direction [1 0]}
+                                                  :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2193
-                    :on-click (fn [e] (notify-channel! {:type :goal :goal {:status :move :direction [0 1]} :index (:index player)}))}]]])
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move
+                                                         :direction [0 1]}
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value "approach ball"
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :approach-ball}
+                                                  :index (:index player)}))}]]
+     ])
 
 (defn ui-team []
   "Returns ui for handling teams."
@@ -83,16 +115,19 @@
 (defn process-key [e dir]
   (case dir
     :down (case e.key
-            ;; control player with arrow keys
+            ;; control player
             "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 1)
+            ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
             ("u" "U") (notify-channel! {:type :print-ui-state})
+            ("b" "B") (notify-channel! {:type :print-ball-info})
             ("p" "P") (if-let [p (get @ui-state :selected-player)]
                         (notify-channel! {:type :print-player-info :index p}))
             :default)
     :up (case e.key
           "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 0)
+          ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
           :default)
     :default))
 
@@ -106,7 +141,15 @@
 (defn setup-event-handlers! [update-ui-fn]
   "Add event listeners."
   (let [canvas (by-id "canvas")]
-    (.addEventListener canvas "mousedown" (fn [e] (notify-channel! {:type :click-canvas :event e})))
+    (.addEventListener canvas "mousedown" (fn [event]
+                                            (let [rect (.getBoundingClientRect canvas)
+                                                  x (- (.-clientX event) (.-left rect))
+                                                  y (- (.-clientY event) (.-top rect))
+                                                  button (.-button event)]
+                                              (case button
+                                                0 (notify-channel! {:type :click-canvas-move :pos [x y]})
+                                                2 (notify-channel! {:type :click-canvas-shoot :pos [x y]})
+                                                :do-nothing))))
     (.addEventListener js/document "keyup" (get-key-listener :up))
     (.addEventListener js/document "keydown" (get-key-listener :down))))
 

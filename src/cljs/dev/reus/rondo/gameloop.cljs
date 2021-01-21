@@ -23,11 +23,13 @@
                 :fps 0}
      :drawing-context drawing-context
      :ball {
+            :state :with-player
             :player 1
             :ke 0 ;; kinetic energy
             :velocity nil
             :direction nil
             :pos nil
+            :shot-start-time nil
             }
      :players players
      :teams teams}))
@@ -54,13 +56,59 @@
         (assoc :time t :frame-time frame-time)
         (update :frame inc))))
 
+(defn update-shot [ball shot current-time]
+  (let [player (:player ball)
+        dir (:direction player)
+        pos (:pos player)
+        s (:shot-start-time ball)]
+    (if shot
+      (if-not s
+        (assoc ball :shot-start-time current-time)
+        ball)
+      (if s
+        (let [ke (* (- current-time s) 100)]
+          {:shot false
+           :direction dir
+           :player nil
+           :velocity nil
+           :ke ke
+           :pos (mapv + pos (map #(* % 10) dir))})
+        ball))))
+
+(defn control-player [player]
+  player)
+
+(def ball-states [{:with-player :with-player
+                   :shooting :release-shot
+                   :release-shot :moving}
+                  {:with-player :shot-initiated
+                   :shot-initiated :shooting
+                   :shooting :shooting}
+                  ])
+
+(defn control-ball [ball shot]
+  (let [new-state (get-in ball-states [shot (:state ball)])]
+    (assoc ball :state new-state)))
+
+(defn game-controls [state]
+  (let [ui-state @ui/ui-state
+        selected-player (get ui-state :selected-player)]
+    (if-let [player (get-in state [:players selected-player])]
+      (let [[_ _ shot] (get ui-state :keys-pressed)
+            ball (get state :ball)
+            player-with-ball (:player ball)]
+        (cond-> state
+          (= player-with-ball selected-player) (assoc :ball (control-ball ball shot))))
+      state)))
+
 (defn step [state]
   "take a step in state updates"
   (-> state
       update-time
+      game-controls
       model/update-players
-      model/check-player-collisions
-      model/update-ball))
+      model/update-ball
+      model/check-player-collisions))
 
 
 (defn setup-worker []
@@ -83,6 +131,12 @@
   (case (:type e)
     :reset-position (model/reset-position state (:index e))
     :random-position (model/random-position state (:index e))
+    :give-ball (assoc state :ball {:state :with-player
+                                   :player (:index e)
+                                   :velocity nil
+                                   :direction nil
+                                   :ke 0
+                                   :pos nil})
     :print-state (do
                    (pprint state)
                    state)
@@ -92,20 +146,18 @@
     :print-player-info (let [player (get-in state [:players (:index e)])]
                          (pprint player)
                          state)
-    :click-canvas (let [event (:event e)
-                        canvas (.-target event)
-                        rect (.getBoundingClientRect canvas)
-                        x (- (.-clientX event) (.-left rect))
-                        y (- (.-clientY event) (.-top rect))
-                        mouse-selected-player (model/point-in-players? [x y] (:players state))]
-                    (println (:event e))
-                    (if mouse-selected-player
-                      (do
-                        (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
-                        state)
-                      (if-let [selected-player (:selected-player @ui/ui-state)]
-                        (assoc-in state [:players selected-player :goal] {:status :move-destination :destination [x y]})
-                        state)))
+    :print-ball-info (do
+                       (pprint (get state :ball))
+                       state)
+    :click-canvas-move (let [[x y] (:pos e)
+                             mouse-selected-player (model/point-in-players? [x y] (:players state))]
+                         (if mouse-selected-player
+                           (do
+                             (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
+                             state)
+                           (if-let [selected-player (:selected-player @ui/ui-state)]
+                             (assoc-in state [:players selected-player :goal] {:status :move-destination :destination [x y]})
+                             state)))
     :goal (update-in state [:players (:index e)] #(assoc % :goal (:goal e)))
     state))
 
