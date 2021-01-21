@@ -56,29 +56,10 @@
         (assoc :time t :frame-time frame-time)
         (update :frame inc))))
 
-(defn update-shot [ball shot current-time]
-  (let [player (:player ball)
-        dir (:direction player)
-        pos (:pos player)
-        s (:shot-start-time ball)]
-    (if shot
-      (if-not s
-        (assoc ball :shot-start-time current-time)
-        ball)
-      (if s
-        (let [ke (* (- current-time s) 100)]
-          {:shot false
-           :direction dir
-           :player nil
-           :velocity nil
-           :ke ke
-           :pos (mapv + pos (map #(* % 10) dir))})
-        ball))))
-
 (defn control-player [player]
   player)
 
-(def ball-states [{:with-player :with-player
+(defonce ball-states [{:with-player :with-player
                    :shooting :release-shot
                    :release-shot :moving}
                   {:with-player :shot-initiated
