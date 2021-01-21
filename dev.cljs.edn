@@ -1,1 +1,2 @@
-{:main dev.reus.rondo.gameloop}
+{:main dev.reus.rondo.gameloop
+ :connect-url "ws://192.168.1.130:9500/figwheel-connect"}

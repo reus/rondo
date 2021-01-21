@@ -17,5 +17,9 @@
                              "-m" "figwheel.main"
                              "-b" "dev"
                              "-r"]}
+           :fig2 {:main-opts ["-i" "scripts/server.clj"
+                             "-m" "figwheel.main"
+                             "-b" "dev-deniro"
+                             "-r"]}
            :garamond {:main-opts ["-m" "garamond.main"]
                       :extra-deps {com.workframe/garamond {:mvn/version "0.4.0"}}}}}
