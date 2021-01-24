@@ -3,6 +3,7 @@
 (defonce settings {:pitch-size [400 400]
                    :player-radius 5
                    :ball-radius 3
+                   :max-angle-pickup-ball 0.79 ;in radians, about 45 degrees
                    :distance-to-ball 1
                    :distance-to-side 10
                    })

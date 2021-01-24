@@ -89,7 +89,9 @@
       game-controls
       model/update-players
       model/update-ball
-      model/check-player-collisions))
+      model/player-player-collisions
+      model/player-ball-collisions
+      ))
 
 
 (defn setup-worker []

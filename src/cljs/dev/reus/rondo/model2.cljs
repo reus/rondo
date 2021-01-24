@@ -16,19 +16,27 @@
       [0 0]
       (mapv #(/ % mag) [vx vy]))))
 
-(defn distance-points [p1 p2]
+(defn subtract [v1 v2]
+  (map - v1 v2))
+
+(defn distance [x y]
   "Give the distance between two coordinates."
-  (let [[x1 y1] p1
-        [x2 y2] p2
-        dx (- x2 x1)
-        dy (- y2 y1)]
-    (.sqrt js/Math (+ (* dx dx) (* dy dy)))))
+  (magnitude (subtract x y)))
+
+(defn angle [v1 v2]
+  (.acos js/Math (/ (dot-product v1 v2) (* (magnitude v1) (magnitude v2)))))
+
+(defn project [v1 v2]
+  "Give the projection of v1 on v2"
+  nil
+  )
 
 (defn distance-circles [p1 r1 p2 r2]
-  (- (distance-points p1 p2) (+ r1 r2)))
+  (- (distance p1 p2) (+ r1 r2)))
 
 (defn circles-overlap? [p1 r1 p2 r2]
   (< (distance-circles p1 r1 p2 r2) 0))
+
 
 (defn find-color [team]
   "Determine the shirt-color of a player. Use a team keyword."
@@ -187,7 +195,7 @@
         i
         (recur (inc i))))))
 
-(defn check-player-collisions [{players :players :as state}]
+(defn player-player-collisions [{players :players :as state}]
   (let [r (:player-radius gamedata/settings)
         ps (mapv #(select-keys % [:pos :index]) players)
         positions (for [p ps :let [i (:index p)]]
@@ -203,3 +211,45 @@
                                                                  (get player :pos)))))
               (recur (rest ps) (conj new-players player)))))
         (assoc state :players new-players)))))
+
+(defn player-ball-collisions [{players :players ball :ball :as state}]
+  (let [ball-pos (get ball :pos)
+        ball-radius (get gamedata/settings :ball-radius)
+        player-radius (get gamedata/settings :player-radius)]
+    (loop [i 0 collisions []]
+      (if-let [p (get players i)]
+        (if (circles-overlap? (get p :pos) player-radius ball-pos ball-radius)
+          (recur (inc i) (conj collisions (get p :index)))
+          (recur (inc i) collisions))
+        (case (count collisions)
+          0 state
+          1 (let [index (first collisions)
+                  player (get-in state [:players index])
+                  pos-player (:pos player)
+                  vector-player-ball (map - ball-pos pos-player)
+                  norm-vector-player-ball (normalize vector-player-ball)
+                  dir (:direction player)
+                  angle (angle dir norm-vector-player-ball)]
+              (if (< angle (get gamedata/settings :max-angle-pickup-ball))
+                (assoc state :ball {:state :with-player
+                                    :player index
+                                    :ke 0 ;; kinetic energy
+                                    :velocity nil
+                                    :direction nil
+                                    :pos (position-ball-with-player player)
+                                    :shot-start-time nil})
+                (let [v-ball (get ball :velocity)
+                      v-player (get player :velocity)
+                      new-v (map + (map #(* -1 %) v-ball) (map #(* 2 %) v-player))
+                      new-dir (normalize new-v)]
+                  (assoc state :ball {:state :moving
+                                      :player nil
+                                      :ke (get ball :ke) ;; kinetic energy
+                                      :velocity new-v
+                                      :direction new-dir
+                                      :pos (get ball :pos)
+                                      :shot-start-time nil}))))
+          2 (do
+              (println 2)
+              state)
+          state)))))
