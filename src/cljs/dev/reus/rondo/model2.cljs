@@ -1,6 +1,8 @@
 (ns dev.reus.rondo.model2
   (:require [dev.reus.rondo.gamedata :as gamedata]))
 
+;; Utility functions
+
 (defn dot-product [v1 v2]
   "Compute the dot product of two vectors."
   (apply + (map * v1 v2)))
@@ -16,8 +18,14 @@
       [0 0]
       (mapv #(/ % mag) [vx vy]))))
 
+(defn add [v1 v2]
+  (mapv + v1 v2))
+
 (defn subtract [v1 v2]
-  (map - v1 v2))
+  (mapv - v1 v2))
+
+(defn add-scaled [v1 v2 k]
+  (mapv + v1 (map #(* k %) v2)))
 
 (defn distance [x y]
   "Give the distance between two coordinates."
@@ -26,17 +34,29 @@
 (defn angle [v1 v2]
   (.acos js/Math (/ (dot-product v1 v2) (* (magnitude v1) (magnitude v2)))))
 
+(defn scale-by [v k]
+  "scale a vector by k"
+  (mapv #(* % k) v))
+
+(defn projection [v1 v2]
+  (let [length1 (magnitude v1)
+        length2 (magnitude v2)]
+    (if (some #{0} (list length1 length2))
+      0
+      (/ (dot-product v1 v2) length2))))
+
+(defn para [v u]
+  (let [length (magnitude v)]
+    (scale-by v (/ u length))))
+
 (defn project [v1 v2]
-  "Give the projection of v1 on v2"
-  nil
-  )
+  (para v2 (projection v1 v2)))
 
 (defn distance-circles [p1 r1 p2 r2]
   (- (distance p1 p2) (+ r1 r2)))
 
 (defn circles-overlap? [p1 r1 p2 r2]
   (< (distance-circles p1 r1 p2 r2) 0))
-
 
 (defn find-color [team]
   "Determine the shirt-color of a player. Use a team keyword."
@@ -122,30 +142,29 @@
                           t (:time state)
                           shot-start-time (:shot-start-time ball)
                           ke (* (- t shot-start-time) 100)
+                          vmag (.sqrt js/Math (* ke 2))
+                          vel (map #(* % vmag) dir)
                           new-pos (position-ball-with-player player)]
                       (assoc state :ball {:state :moving
-                                          :direction dir
                                           :player nil
-                                          :velocity nil
+                                          :velocity vel
                                           :ke ke
                                           :pos new-pos})))
     (case (:state ball)
       :moving (let [ke (:ke ball)]
                 (if (> ke 1)
-                  (let [dir (:direction ball)
-                        vmag (.sqrt js/Math (* ke 2))
-                        [vel-x vel-y] (map #(* % vmag) dir)
+                  (let [vmag (.sqrt js/Math (* ke 2))
+                        vel (:velocity ball)
+                        new-vel (map #(* % vmag) (normalize vel))
                         dt (* 0.001 (:frame-time state))
                         pos (:pos ball)
-                        new-position (mapv + pos [(* dt vel-x) (* dt vel-y)])]
+                        new-position (mapv + pos (map #(* dt %) new-vel))]
                     (assoc state :ball {:state :moving
-                                        :direction dir
                                         :pos new-position
-                                        :velocity [vel-x vel-y]
+                                        :velocity new-vel
                                         :ke (- ke (* 1 vmag vmag dt))
                                         :player nil}))
                   (assoc state :ball {:state :still
-                                      :direction nil
                                       :pos (:pos ball)
                                       :velocity [0 0]
                                       :ke 0
@@ -235,19 +254,29 @@
                                     :player index
                                     :ke 0 ;; kinetic energy
                                     :velocity nil
-                                    :direction nil
                                     :pos (position-ball-with-player player)
                                     :shot-start-time nil})
+                ;; ball bounces on player, calculate new velocity
+                ;; based on method described in book "Physics for javascript games, animation, and simulations"
                 (let [v-ball (get ball :velocity)
                       v-player (get player :velocity)
-                      new-v (map + (map #(* -1 %) v-ball) (map #(* 2 %) v-player))
-                      new-dir (normalize new-v)]
+                      normal-velo-ball (project v-ball vector-player-ball)
+                      normal-velo-player (project v-player vector-player-ball)
+                      tangent-velo-ball (subtract v-ball normal-velo-ball)
+                      L (- (+ ball-radius player-radius) (magnitude vector-player-ball))
+                      vrel (magnitude (subtract normal-velo-ball normal-velo-player))
+                      ball-pos-impact (add-scaled ball-pos normal-velo-ball (/ (* -1 L) vrel))
+                      u1 (projection normal-velo-ball vector-player-ball)
+                      u2 (projection normal-velo-player vector-player-ball)
+                      v1 (+ (* -1 u1) (* 2 u2)) ;assuming the weight of the ball is much smaller then the player
+                      normal-velo-1 (para vector-player-ball v1)
+                      new-v-ball (add normal-velo-1 tangent-velo-ball)]
                   (assoc state :ball {:state :moving
                                       :player nil
-                                      :ke (get ball :ke) ;; kinetic energy
-                                      :velocity new-v
-                                      :direction new-dir
-                                      :pos (get ball :pos)
+                                      :ke (* (get ball :ke) ;; lose kinetic energy
+                                             (get gamedata/settings :factor-ke-loss-on-collision))
+                                      :velocity new-v-ball
+                                      :pos ball-pos-impact
                                       :shot-start-time nil}))))
           2 (do
               (println 2)

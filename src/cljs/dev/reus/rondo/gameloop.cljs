@@ -27,7 +27,6 @@
             :player 1
             :ke 0 ;; kinetic energy
             :velocity nil
-            :direction nil
             :pos nil
             :shot-start-time nil
             }
@@ -117,7 +116,6 @@
     :give-ball (assoc state :ball {:state :with-player
                                    :player (:index e)
                                    :velocity nil
-                                   :direction nil
                                    :ke 0
                                    :pos nil})
     :print-state (do

@@ -6,6 +6,7 @@
                    :max-angle-pickup-ball 0.79 ;in radians, about 45 degrees
                    :distance-to-ball 1
                    :distance-to-side 10
+                   :factor-ke-loss-on-collision 0.3
                    })
 
 (defonce teams
