@@ -117,6 +117,7 @@
     :down (case e.key
             ;; control player
             "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 1)
+            "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] -1)
             ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
@@ -127,6 +128,7 @@
             :default)
     :up (case e.key
           "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 0)
+          "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] 0)
           ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
           :default)
     :default))

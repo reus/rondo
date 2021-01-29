@@ -72,14 +72,18 @@
 
 (defn game-controls [state]
   (let [ui-state @ui/ui-state
-        selected-player (get ui-state :selected-player)]
-    (if-let [player (get-in state [:players selected-player])]
-      (let [[_ _ shot] (get ui-state :keys-pressed)
-            ball (get state :ball)
-            player-with-ball (:player ball)]
-        (cond-> state
-          (= player-with-ball selected-player) (assoc :ball (control-ball ball shot))))
-      state)))
+        selected-player (get ui-state :selected-player)
+        player (get-in state [:players selected-player])
+        [_ _ shot] (get ui-state :keys-pressed)
+        ball (get state :ball)
+        player-with-ball (:player ball)
+        update-ball (fn [state]
+                      (if (= player-with-ball selected-player)
+                        (assoc state :ball (control-ball ball shot))
+                        (assoc state :ball (assoc ball :state :with-player))))]
+    (cond-> state
+        selected-player (assoc-in [:players selected-player] (control-player player))
+        player-with-ball (update-ball))))
 
 (defn step [state]
   "take a step in state updates"
@@ -89,8 +93,7 @@
       model/update-players
       model/update-ball
       model/player-player-collisions
-      model/player-ball-collisions
-      ))
+      model/player-ball-collisions))
 
 
 (defn setup-worker []

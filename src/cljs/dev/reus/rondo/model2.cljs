@@ -149,7 +149,8 @@
                                           :player nil
                                           :velocity vel
                                           :ke ke
-                                          :pos new-pos})))
+                                          :pos new-pos
+                                          :shot-start-time nil})))
     (case (:state ball)
       :moving (let [ke (:ke ball)]
                 (if (> ke 1)
@@ -163,12 +164,14 @@
                                         :pos new-position
                                         :velocity new-vel
                                         :ke (- ke (* 1 vmag vmag dt))
-                                        :player nil}))
+                                        :player nil
+                                        :shot-start-time nil}))
                   (assoc state :ball {:state :still
                                       :pos (:pos ball)
                                       :velocity [0 0]
                                       :ke 0
-                                      :player nil})))
+                                      :player nil
+                                      :shot-start-time nil})))
       :still state)))
 
 (defn reset-position [state i]

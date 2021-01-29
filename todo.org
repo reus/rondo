@@ -1,0 +1,5 @@
+* Next steps
+** Rotate from idle
+** Approach ball
+* Improvements
+** Better circle-circle collision detection, see https://ericleong.me/research/circle-circle/
