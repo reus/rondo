@@ -14,7 +14,7 @@
         teams (model/init-teams)
         drawing-context (canvas2d/init-drawing-context)
         initial-time (.now js/Date)]
-    {:refresh-rate 20
+    {:refresh-rate 15
      :frame 1
      :time initial-time
      :frame-time 0
@@ -55,35 +55,38 @@
         (assoc :time t :frame-time frame-time)
         (update :frame inc))))
 
-(defn control-player [player]
-  player)
+(defn control-player [player forward turn]
+    (assoc player :goal {:status :key-controlled :forward forward :turn turn}))
 
 (defonce ball-states [{:with-player :with-player
-                   :shooting :release-shot
-                   :release-shot :moving}
-                  {:with-player :shot-initiated
-                   :shot-initiated :shooting
-                   :shooting :shooting}
-                  ])
+                       :shooting :release-shot
+                       :release-shot :moving}
+                      {:with-player :shot-initiated
+                       :shot-initiated :shooting
+                       :shooting :shooting}])
 
 (defn control-ball [ball shot]
   (let [new-state (get-in ball-states [shot (:state ball)])]
     (assoc ball :state new-state)))
 
+;(defn game-controls [state]
+;  (let [ui-state @ui/ui-state
+;        selected-player (get ui-state :selected-player)
+;        player (get-in state [:players selected-player])
+;        [forward turn shot] (get ui-state :keys-pressed)
+;        ball (get state :ball)
+;        player-with-ball (:player ball)
+;        update-ball (fn [state]
+;                      (if (= player-with-ball selected-player)
+;                        (assoc state :ball (control-ball ball shot))
+;                        state))]
+;    (cond-> state
+;      (and selected-player
+;           (not (every? zero? (list forward turn)))) (assoc-in [:players selected-player] (control-player player forward turn))
+;        player-with-ball (update-ball))))
+
 (defn game-controls [state]
-  (let [ui-state @ui/ui-state
-        selected-player (get ui-state :selected-player)
-        player (get-in state [:players selected-player])
-        [_ _ shot] (get ui-state :keys-pressed)
-        ball (get state :ball)
-        player-with-ball (:player ball)
-        update-ball (fn [state]
-                      (if (= player-with-ball selected-player)
-                        (assoc state :ball (control-ball ball shot))
-                        (assoc state :ball (assoc ball :state :with-player))))]
-    (cond-> state
-        selected-player (assoc-in [:players selected-player] (control-player player))
-        player-with-ball (update-ball))))
+  state)
 
 (defn step [state]
   "take a step in state updates"
@@ -93,8 +96,8 @@
       model/update-players
       model/update-ball
       model/player-player-collisions
-      model/player-ball-collisions))
-
+      model/player-ball-collisions
+      model/check-ball))
 
 (defn setup-worker []
   "Create a webworker object and a player channel through which the worker

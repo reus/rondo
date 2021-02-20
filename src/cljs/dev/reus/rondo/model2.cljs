@@ -34,6 +34,11 @@
 (defn angle [v1 v2]
   (.acos js/Math (/ (dot-product v1 v2) (* (magnitude v1) (magnitude v2)))))
 
+(defn rotate [[x1 y1] a]
+  (let [x2 (- (* (.cos js/Math a) x1) (* (.sin js/Math a) y1))
+        y2 (+ (* (.sin js/Math a) x1) (* (.cos js/Math a) y1))]
+    [x2 y2]))
+
 (defn scale-by [v k]
   "scale a vector by k"
   (mapv #(* % k) v))
@@ -88,30 +93,43 @@
   "Initialize team data to be used in gameloop."
   gamedata/teams)
 
-(defn compute-integrals [{vel :velocity pos :pos dir :direction :as player} acc dt]
+(defn compute-integrals [{vel :velocity pos :pos :as player} acc-dir dt]
   "Wit acceleration and time, compute velocity and displacement."
   (let [magn (magnitude vel)
-        new-acc (mapv + (map #(* 250 %) acc) (map #(* -0.3 magn %) vel))
+        new-acc (mapv + (map #(* 150 %) acc-dir) (map #(* -0.3 magn %) vel))
         new-vel (mapv + vel (map #(* dt %) new-acc))
-        new-pos (mapv + pos (map #(* dt %) new-vel))
-        new-dir (normalize acc)]
-    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir)))
+        new-pos (mapv + pos (map #(* dt %) new-vel))]
+    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction acc-dir)))
+
+(defn execute-controls [{dir :direction acc :acceleration :as player} turn forward dt]
+  (let [new-dir (rotate dir (* turn 0.05))
+        new-acc (mapv #(* forward %) new-dir)]
+    (-> player
+        (assoc :direction new-dir)
+        (compute-integrals new-acc dt))))
+
 
 (defn get-update-fn [dt]
   (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
     (let [goal (:goal player)]
       (case (:status goal)
-        :move (let [dir (:direction goal)]
+        :key-controlled (let [turn (:turn goal)
+                              forward (:forward goal)]
+                              ;dir (:direction player)
+                              ;new-dir (rotate dir (* turn 0.05))
+                              ;new-acc (mapv #(* forward %) new-dir)]
+                          (execute-controls player turn forward dt))
+        :move-direction (let [dir (:direction goal)]
                 (compute-integrals player dir dt))
         :move-destination (let [dest (:destination goal)
-                                dest-vector (map - dest pos)
+                                dest-vector (subtract dest pos)
                                 norm (normalize dest-vector)
                                 new-player (compute-integrals player norm dt)
-                                vec-new-player-to-dest (map - dest (:pos new-player))]
+                                vec-new-player-to-dest (subtract dest (:pos new-player))]
                             (if (pos? (dot-product dest-vector vec-new-player-to-dest)) ;check if destination has been reached
                               new-player
                               (assoc player :acceleration [0 0] :velocity [0 0] :pos dest :prev-pos pos :goal {:status :idle})))
-        :idle (assoc player :acceleration [0 0] :velocity [0 0])
+        :set-idle (assoc player :acceleration [0 0] :velocity [0 0] :goal {:status :idle})
         player))))
 
 (defn update-players [{players :players :as state}]
@@ -285,3 +303,11 @@
               (println 2)
               state)
           state)))))
+
+(defn check-ball [{ball :ball :as state}]
+  (let [[x y] (get ball :pos)]
+    (if (or (js/isNaN x) (js/isNaN y))
+      (do
+        (println state)
+        (assoc-in state [:ball :pos] [10 10]))
+      state)))

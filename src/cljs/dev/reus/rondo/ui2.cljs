@@ -39,34 +39,34 @@
                     :value "Idle"
                     :on-click (fn [e]
                                 (notify-channel! {:type :goal
-                                                  :goal {:status :idle}
+                                                  :goal {:status :set-idle}
                                                   :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2191
                     :on-click (fn [e]
                                 (notify-channel! {:type :goal
-                                                  :goal {:status :move
+                                                  :goal {:status :move-direction
                                                          :direction [0 -1]}
                                                   :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2190
                     :on-click (fn [e]
                                 (notify-channel! {:type :goal
-                                                  :goal {:status :move
+                                                  :goal {:status :move-direction
                                                          :direction [-1 0]}
                                                   :index (:index player)}))}]
            [:input {:type "button"
                     :value \u2192
                     :on-click (fn [e]
                                 (notify-channel! {:type :goal
-                                                  :goal {:status :move
+                                                  :goal {:status :move-direction
                                                          :direction [1 0]}
                                                   :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value \u2193
                     :on-click (fn [e]
                                 (notify-channel! {:type :goal
-                                                  :goal {:status :move
+                                                  :goal {:status :move-direction
                                                          :direction [0 1]}
                                                   :index (:index player)}))}]]
      [:div [:input {:type "button"
@@ -118,6 +118,7 @@
             ;; control player
             "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 1)
             "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] -1)
+            "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 1)
             ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
@@ -129,6 +130,7 @@
     :up (case e.key
           "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 0)
           "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] 0)
+          "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 0)
           ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
           :default)
     :default))

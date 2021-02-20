@@ -1,4 +1,5 @@
 * Next steps
+** player with ball-player collision
 ** Rotate from idle
 ** Approach ball
 * Improvements
