@@ -55,8 +55,18 @@
         (assoc :time t :frame-time frame-time)
         (update :frame inc))))
 
+;(defn execute-controls [{dir :direction acc :acceleration :as player} turn forward dt]
+;  (let [new-dir (rotate dir (* turn 0.05))
+;        new-acc (mapv #(* forward %) new-dir)]
+;    (-> player
+;        (assoc :direction new-dir)
+;        (compute-integrals new-acc dt))))
+
+;(defn control-player [player forward turn]
+;    (assoc player :goal {:status :key-controlled :forward forward :turn turn}))
+
 (defn control-player [player forward turn]
-    (assoc player :goal {:status :key-controlled :forward forward :turn turn}))
+  player)
 
 (defonce ball-states [{:with-player :with-player
                        :shooting :release-shot
@@ -69,24 +79,21 @@
   (let [new-state (get-in ball-states [shot (:state ball)])]
     (assoc ball :state new-state)))
 
-;(defn game-controls [state]
-;  (let [ui-state @ui/ui-state
-;        selected-player (get ui-state :selected-player)
-;        player (get-in state [:players selected-player])
-;        [forward turn shot] (get ui-state :keys-pressed)
-;        ball (get state :ball)
-;        player-with-ball (:player ball)
-;        update-ball (fn [state]
-;                      (if (= player-with-ball selected-player)
-;                        (assoc state :ball (control-ball ball shot))
-;                        state))]
-;    (cond-> state
-;      (and selected-player
-;           (not (every? zero? (list forward turn)))) (assoc-in [:players selected-player] (control-player player forward turn))
-;        player-with-ball (update-ball))))
-
 (defn game-controls [state]
-  state)
+  (let [ui-state @ui/ui-state
+        selected-player (get ui-state :selected-player)
+        player (get-in state [:players selected-player])
+        [forward turn shot] (get ui-state :keys-pressed)
+        ball (get state :ball)
+        player-with-ball (:player ball)
+        update-ball (fn [state]
+                      (if (= player-with-ball selected-player)
+                        (assoc state :ball (control-ball ball shot))
+                        state))]
+    (cond-> state
+      selected-player (assoc-in [:players selected-player] (control-player player forward turn))
+      player-with-ball update-ball)))
+
 
 (defn step [state]
   "take a step in state updates"

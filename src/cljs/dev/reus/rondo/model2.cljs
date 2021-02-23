@@ -99,37 +99,36 @@
         new-acc (mapv + (map #(* 150 %) acc-dir) (map #(* -0.3 magn %) vel))
         new-vel (mapv + vel (map #(* dt %) new-acc))
         new-pos (mapv + pos (map #(* dt %) new-vel))]
-    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction acc-dir)))
+    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos)))
 
-(defn execute-controls [{dir :direction acc :acceleration :as player} turn forward dt]
-  (let [new-dir (rotate dir (* turn 0.05))
-        new-acc (mapv #(* forward %) new-dir)]
-    (-> player
-        (assoc :direction new-dir)
-        (compute-integrals new-acc dt))))
-
+(defn set-direction [{vel :velocity :as player}]
+  (assoc player :direction (normalize vel)))
 
 (defn get-update-fn [dt]
   (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
     (let [goal (:goal player)]
       (case (:status goal)
-        :key-controlled (let [turn (:turn goal)
-                              forward (:forward goal)]
-                              ;dir (:direction player)
-                              ;new-dir (rotate dir (* turn 0.05))
-                              ;new-acc (mapv #(* forward %) new-dir)]
-                          (execute-controls player turn forward dt))
         :move-direction (let [dir (:direction goal)]
-                (compute-integrals player dir dt))
+                          (-> player
+                               (compute-integrals dir dt)
+                               (assoc :direction dir)))
         :move-destination (let [dest (:destination goal)
                                 dest-vector (subtract dest pos)
                                 norm (normalize dest-vector)
-                                new-player (compute-integrals player norm dt)
+                                new-player (-> player
+                                               (compute-integrals norm dt)
+                                               set-direction)
                                 vec-new-player-to-dest (subtract dest (:pos new-player))]
-                            (if (pos? (dot-product dest-vector vec-new-player-to-dest)) ;check if destination has been reached
+                            (if (> (dot-product dest-vector vec-new-player-to-dest) 10) ;check if destination has been (almost) reached
                               new-player
-                              (assoc player :acceleration [0 0] :velocity [0 0] :pos dest :prev-pos pos :goal {:status :idle})))
-        :set-idle (assoc player :acceleration [0 0] :velocity [0 0] :goal {:status :idle})
+                              (assoc player :goal {:status :decelerate})))
+        :decelerate (let [vel (:velocity player)
+                          magn (magnitude vel)]
+                      (if (> magn 5)
+                        (compute-integrals player [0 0] dt)
+                        (assoc player :acceleration [0 0] :velocity [0 0] :goal {:status :idle})))
+        :set-idle (assoc player :goal {:status :idle} :acceleration [0 0] :velocity [0 0])
+
         player))))
 
 (defn update-players [{players :players :as state}]
