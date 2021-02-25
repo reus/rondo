@@ -154,7 +154,7 @@
                              (swap! ui/ui-state assoc :selected-player mouse-selected-player :selected-team nil)
                              state)
                            (if-let [selected-player (:selected-player @ui/ui-state)]
-                             (assoc-in state [:players selected-player :goal] {:status :move-destination :destination [x y]})
+                             (assoc-in state [:players selected-player :goal] {:status :move-destination :destination [x y] :run (get-in @ui/ui-state [:keys-pressed 3])})
                              state)))
     :goal (update-in state [:players (:index e)] #(assoc % :goal (:goal e)))
     state))

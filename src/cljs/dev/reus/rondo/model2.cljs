@@ -98,11 +98,11 @@
    (compute-integrals player acc-dir 0 dt))
   ([{[vx vy] :velocity pos :pos :as player} acc-dir turn dt]
    (let [magn (magnitude [vx vy])
-         new-acc (mapv + (map #(* 150 %) acc-dir) (map #(* -0.3 magn %) [vx vy]) (map * (map #(* turn %) [-1 1]) [vy vx]))
+         new-acc (mapv + (map #(* 100 %) acc-dir) (map #(* -0.3 magn %) [vx vy]) (map * (map #(* turn %) [-1 1]) [vy vx]))
          new-vel (mapv + [vx vy] (map #(* dt %) new-acc))
          new-pos (mapv + pos (map #(* dt %) new-vel))
-         new-dir (if (< magn 10)
-                   (rotate (:direction player) (* 0.05 turn))
+         new-dir (if (= new-vel [0 0])
+                   (rotate (:direction player) (* 0.1 turn))
                    (normalize new-vel))]
      (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir))))
 
@@ -125,8 +125,9 @@
                               (-> player
                                   (compute-integrals acc-dir dt)))
         :move-destination (let [dest (:destination goal)
+                                run (:run goal)
                                 dest-vector (subtract dest pos)
-                                norm (normalize dest-vector)
+                                norm (map #(* run %)(normalize dest-vector))
                                 new-player (-> player
                                                (compute-integrals norm dt))
                                 vec-new-player-to-dest (subtract dest (:pos new-player))]
@@ -139,7 +140,6 @@
                         (compute-integrals player [0 0] dt)
                         (assoc player :acceleration [0 0] :velocity [0 0] :goal {:status :idle})))
         :set-idle (assoc player :goal {:status :idle} :acceleration [0 0] :velocity [0 0])
-
         player))))
 
 (defn update-players [{players :players :as state}]

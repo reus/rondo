@@ -124,7 +124,8 @@
             "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] -1)
             "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 1)
             ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
-            ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 2)
+            ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 3)
+            ("Control") (swap! ui-state assoc-in [:keys-pressed 3] 0.2)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
             ("u" "U") (notify-channel! {:type :print-ui-state})
@@ -138,6 +139,7 @@
           "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 0)
           ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
           ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 1)
+          ("Control") (swap! ui-state assoc-in [:keys-pressed 3] 1)
           :default)
     :default))
 
