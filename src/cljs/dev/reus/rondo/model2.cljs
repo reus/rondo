@@ -93,31 +93,42 @@
   "Initialize team data to be used in gameloop."
   gamedata/teams)
 
-(defn compute-integrals [{vel :velocity pos :pos :as player} acc-dir dt]
-  "Wit acceleration and time, compute velocity and displacement."
-  (let [magn (magnitude vel)
-        new-acc (mapv + (map #(* 150 %) acc-dir) (map #(* -0.3 magn %) vel))
-        new-vel (mapv + vel (map #(* dt %) new-acc))
-        new-pos (mapv + pos (map #(* dt %) new-vel))]
-    (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos)))
+(defn compute-integrals
+  ([player acc-dir dt]
+   (compute-integrals player acc-dir 0 dt))
+  ([{[vx vy] :velocity pos :pos :as player} acc-dir turn dt]
+   (let [magn (magnitude [vx vy])
+         new-acc (mapv + (map #(* 150 %) acc-dir) (map #(* -0.3 magn %) [vx vy]) (map * (map #(* turn %) [-1 1]) [vy vx]))
+         new-vel (mapv + [vx vy] (map #(* dt %) new-acc))
+         new-pos (mapv + pos (map #(* dt %) new-vel))
+         new-dir (if (< magn 10)
+                   (rotate (:direction player) (* 0.05 turn))
+                   (normalize new-vel))]
+     (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir))))
 
 (defn set-direction [{vel :velocity :as player}]
   (assoc player :direction (normalize vel)))
 
-(defn get-update-fn [dt]
+(defn get-player-update-fn [dt]
   (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
     (let [goal (:goal player)]
       (case (:status goal)
-        :move-direction (let [dir (:direction goal)]
-                          (-> player
-                               (compute-integrals dir dt)
-                               (assoc :direction dir)))
+        :human-controlled (let [run (:run goal)
+                                acc-dir (map #(* run %) (:acc-dir goal))
+                                turn (*  run (:turn goal))]
+                            (if (zero? turn)
+                              (compute-integrals player acc-dir dt)
+                              (if (= acc-dir [0 0])
+                                (compute-integrals player acc-dir turn dt)
+                                (compute-integrals player acc-dir turn dt))))
+        :move-direction (let [acc-dir (:direction goal)]
+                              (-> player
+                                  (compute-integrals acc-dir dt)))
         :move-destination (let [dest (:destination goal)
                                 dest-vector (subtract dest pos)
                                 norm (normalize dest-vector)
                                 new-player (-> player
-                                               (compute-integrals norm dt)
-                                               set-direction)
+                                               (compute-integrals norm dt))
                                 vec-new-player-to-dest (subtract dest (:pos new-player))]
                             (if (> (dot-product dest-vector vec-new-player-to-dest) 10) ;check if destination has been (almost) reached
                               new-player
@@ -133,7 +144,7 @@
 
 (defn update-players [{players :players :as state}]
   (let [frame-time (:frame-time state)
-        update-fn (get-update-fn (* frame-time 0.001))]
+        update-fn (get-player-update-fn (* frame-time 0.001))]
     (assoc state :players (mapv update-fn players))))
 
 (defn position-ball-with-player [{pos :pos dir :direction}]

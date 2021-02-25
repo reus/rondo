@@ -9,7 +9,11 @@
                                  :teams nil
                                  :players nil
                                  :ui-chan nil
-                                 :keys-pressed [0 0 0]
+                                 :keys-pressed [0 ; forward
+                                                0 ; turn left/right(-1 or 1)
+                                                0 ; shoot
+                                                1 ; run
+                                               ]
                                  }))
 
 (defn notify-channel! [m]
@@ -120,6 +124,7 @@
             "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] -1)
             "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 1)
             ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
+            ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 2)
             ;; print state
             ("s" "S") (notify-channel! {:type :print-state})
             ("u" "U") (notify-channel! {:type :print-ui-state})
@@ -132,6 +137,7 @@
           "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] 0)
           "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 0)
           ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
+          ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 1)
           :default)
     :default))
 

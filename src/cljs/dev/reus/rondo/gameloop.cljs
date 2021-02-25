@@ -65,8 +65,12 @@
 ;(defn control-player [player forward turn]
 ;    (assoc player :goal {:status :key-controlled :forward forward :turn turn}))
 
-(defn control-player [player forward turn]
-  player)
+(defn control-player [{direction :direction {status :status} :goal :as player} forward turn run]
+  (if (every? zero? (list forward turn))
+    (if (= status :human-controlled)
+      (assoc player :goal {:status :decelerate})
+      player)
+    (assoc player :goal {:status :human-controlled :acc-dir (mapv #(* forward %) direction) :turn turn :run run})))
 
 (defonce ball-states [{:with-player :with-player
                        :shooting :release-shot
@@ -83,7 +87,7 @@
   (let [ui-state @ui/ui-state
         selected-player (get ui-state :selected-player)
         player (get-in state [:players selected-player])
-        [forward turn shot] (get ui-state :keys-pressed)
+        [forward turn shot run] (get ui-state :keys-pressed)
         ball (get state :ball)
         player-with-ball (:player ball)
         update-ball (fn [state]
@@ -91,7 +95,7 @@
                         (assoc state :ball (control-ball ball shot))
                         state))]
     (cond-> state
-      selected-player (assoc-in [:players selected-player] (control-player player forward turn))
+      selected-player (assoc-in [:players selected-player] (control-player player forward turn run))
       player-with-ball update-ball)))
 
 
