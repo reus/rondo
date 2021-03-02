@@ -10,9 +10,9 @@
                                  :players nil
                                  :ui-chan nil
                                  :keys-pressed [0 ; forward
-                                                0 ; turn left/right(-1 or 1)
+                                                0 ; turn left (-1) or right (1)
                                                 0 ; shoot
-                                                1 ; run
+                                                1 ; walk (1) or run (3)
                                                ]
                                  }))
 
@@ -73,12 +73,16 @@
                                                   :goal {:status :move-direction
                                                          :direction [0 1]}
                                                   :index (:index player)}))}]]
-     [:div [:input {:type "button"
-                    :value "approach ball"
-                    :on-click (fn [e]
-                                (notify-channel! {:type :goal
-                                                  :goal {:status :approach-ball}
-                                                  :index (:index player)}))}]]
+     [:div [:input {:type "checkbox"
+                    ;:value "approach ball"
+                    :checked (= :approach-ball (get-in player [:goal :status]))
+                    :on-change (fn [e]
+                                 (let [status (if (.. e -target -checked)
+                                                :approach-ball
+                                                :set-idle)]
+                                       (notify-channel! {:type :goal
+                                                         :goal {:status status}
+                                                         :index (:index player)})))}] "Approach ball"]
      ])
 
 (defn ui-team []
@@ -150,7 +154,7 @@
       ("Space" "Shift" "z" "Z" "Alt" "ArrowLeft" "ArrowRight" "ArrowUp" "ArrowDown" "PageDown" "End") (do (.preventDefault e) false)
       true)))
 
-(defn setup-event-handlers! [update-ui-fn]
+(defn setup-event-handlers! []
   "Add event listeners."
   (let [canvas (by-id "canvas")]
     (.addEventListener canvas "mousedown" (fn [event]
@@ -170,14 +174,13 @@
 that offers a means to communicate with the game loop. Returns the channel and a reagent atom
 with ui state."
   (let [ui-chan (chan)
-        update-ui-fn (fn [m]
-                    (put! ui-chan m))
-        sel-players (mapv #(select-keys % [:index :name :team :nr]) players)]
-    (swap! ui-state assoc :players sel-players :teams teams :ui-chan ui-chan)
+        sel-players (mapv #(select-keys % [:index :name :team :nr]) players)
+        sel-teams (mapv #(select-keys % [:id :name]) teams)]
+    (swap! ui-state assoc :players sel-players :teams sel-teams :ui-chan ui-chan)
     (rdom/render [get-ui] (by-id "ui"))
-    (setup-event-handlers! update-ui-fn)
+    (setup-event-handlers!)
     ui-chan))
 
-(defn update-fps! [fps]
-  "Update the fps of the game"
+(defn update-ui-state! [{{fps :fps} :fps-info players :players}]
+  (swap! ui-state assoc :players (mapv #(select-keys % [:index :name :team :nr :goal]) players))
   (swap! ui-state assoc :fps (.round js/Math fps)))

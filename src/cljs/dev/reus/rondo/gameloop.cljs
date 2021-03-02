@@ -55,16 +55,6 @@
         (assoc :time t :frame-time frame-time)
         (update :frame inc))))
 
-;(defn execute-controls [{dir :direction acc :acceleration :as player} turn forward dt]
-;  (let [new-dir (rotate dir (* turn 0.05))
-;        new-acc (mapv #(* forward %) new-dir)]
-;    (-> player
-;        (assoc :direction new-dir)
-;        (compute-integrals new-acc dt))))
-
-;(defn control-player [player forward turn]
-;    (assoc player :goal {:status :key-controlled :forward forward :turn turn}))
-
 (defn control-player [{direction :direction {status :status} :goal :as player} forward turn run]
   (if (every? zero? (list forward turn))
     (if (= status :human-controlled)
@@ -98,7 +88,6 @@
       selected-player (assoc-in [:players selected-player] (control-player player forward turn run))
       player-with-ball update-ball)))
 
-
 (defn step [state]
   "take a step in state updates"
   (-> state
@@ -108,7 +97,8 @@
       model/update-ball
       model/player-player-collisions
       model/player-ball-collisions
-      model/check-ball))
+      model/check-ball
+      ))
 
 (defn setup-worker []
   "Create a webworker object and a player channel through which the worker
@@ -163,25 +153,24 @@
   (let [rate (:refresh-rate state)]
     (render! state)
     (go (loop [refresh (timeout rate)
-               fps-update (timeout 1000)
+               ui-state-update (timeout 100)
                s state]
           (let [[v c] (alts! [refresh
-                              fps-update
+                              ui-state-update
                               ui-channel
                               player-channel] :priority true)]
             (condp = c
               refresh (let [new-state (step s)]
                         (render! new-state)
-                        (recur (timeout rate) fps-update new-state))
-              fps-update (let [new-state (update-fps s)
-                               fps (get-in new-state [:fps-info :fps])]
-                           (ui/update-fps! fps)
-                           (recur refresh (timeout 1000) new-state))
+                        (recur (timeout rate) ui-state-update new-state))
+              ui-state-update (let [new-state (update-fps s)]
+                                (ui/update-ui-state! new-state)
+                                (recur refresh (timeout 100) new-state))
               ui-channel (let [new-state (process-ui s v)]
-                           (recur refresh fps-update new-state))
+                           (recur refresh ui-state-update new-state))
               player-channel (let [new-state v]
                                ;(.postMessage worker v)
-                               (recur refresh fps-update new-state))))))))
+                               (recur refresh ui-state-update new-state))))))))
 (defn start-game []
   "Start the game.
    * Initialize game state

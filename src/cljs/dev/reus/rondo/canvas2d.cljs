@@ -15,7 +15,7 @@
   (let [[x y] (:pos p)
         player-radius (:player-radius gamedata/settings)
         ball-radius (:ball-radius gamedata/settings)
-        [xx yy] (map #(* % (:reach p)) (:direction p))
+        [xx yy] (map #(* % 10) (:direction p))
         [xxx yyy] (map #(* % (+ player-radius ball-radius (:distance-to-ball gamedata/settings))) (:direction p))
         selected-player (get @ui/ui-state :selected-player)
         ctx (:context (:drawing-context state))]

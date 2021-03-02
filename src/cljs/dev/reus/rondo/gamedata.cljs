@@ -24,8 +24,6 @@
                :velocity [0 0]
                :acceleration [0 1]
                :speed 80
-               :turn 10
-               :reach 10
                :team :nl
                :nr 4}
               {:name "Vanenburg"
@@ -34,8 +32,6 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 90
-               :turn 15
-               :reach 10
                :team :nl
                :nr 7
                }
@@ -45,8 +41,6 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 120
-               :turn 10
-               :reach 10
                :team :nl
                :nr 6
                }
@@ -56,8 +50,6 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 110
-               :turn 10
-               :reach 10
                :team :de
                :nr 20
                }
@@ -67,8 +59,6 @@
                :velocity [0 0]
                :acceleration [0 0]
                :speed 100
-               :turn 10
-               :reach 10
                :team :de
                :nr 11
                }

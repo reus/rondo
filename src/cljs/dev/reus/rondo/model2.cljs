@@ -57,6 +57,10 @@
 (defn project [v1 v2]
   (para v2 (projection v1 v2)))
 
+(defn proj [u v] ; projection of v onto u
+  (scale-by u (/ (dot-product v u)
+                 (dot-product u u))))
+
 (defn distance-circles [p1 r1 p2 r2]
   (- (distance p1 p2) (+ r1 r2)))
 
@@ -96,22 +100,23 @@
 (defn compute-integrals
   ([player acc-dir dt]
    (compute-integrals player acc-dir 0 dt))
-  ([{[vx vy] :velocity pos :pos :as player} acc-dir turn dt]
+  ([{[vx vy] :velocity pos :pos dir :direction :as player} acc-dir turn dt]
    (let [magn (magnitude [vx vy])
          new-acc (mapv + (map #(* 100 %) acc-dir) (map #(* -0.3 magn %) [vx vy]) (map * (map #(* turn %) [-1 1]) [vy vx]))
          new-vel (mapv + [vx vy] (map #(* dt %) new-acc))
          new-pos (mapv + pos (map #(* dt %) new-vel))
-         new-dir (if (= new-vel [0 0])
-                   (rotate (:direction player) (* 0.1 turn))
+         new-dir (if (< magn 7)
+                   (rotate dir (* 0.03 turn))
                    (normalize new-vel))]
-     (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir))))
+       (assoc player :acceleration new-acc :velocity new-vel :pos new-pos :prev-pos pos :direction new-dir))))
 
 (defn set-direction [{vel :velocity :as player}]
   (assoc player :direction (normalize vel)))
 
-(defn get-player-update-fn [dt]
+(defn get-player-update-fn [state]
   (fn [{acc :acceleration vel :velocity pos :pos dir :direction :as player}]
-    (let [goal (:goal player)]
+    (let [dt (* 0.001 (:frame-time state))
+          goal (:goal player)]
       (case (:status goal)
         :human-controlled (let [run (:run goal)
                                 acc-dir (map #(* run %) (:acc-dir goal))
@@ -139,12 +144,28 @@
                       (if (> magn 5)
                         (compute-integrals player [0 0] dt)
                         (assoc player :acceleration [0 0] :velocity [0 0] :goal {:status :idle})))
+        :approach-ball (let [ball (:ball state)
+                             ball-state (:state ball)]
+                         (if (= :moving ball-state)
+                           (let [pos-ball (:pos ball)
+                                 dir-ball (normalize (:velocity ball))
+                                 pos-player (:pos player)
+                                 vec-ball-to-player (subtract pos-player pos-ball)
+                                 pr (proj dir-ball vec-ball-to-player)]
+                             (println pos-ball)
+                             (println dir-ball)
+                             (println pos-player)
+                             (println vec-ball-to-player)
+                             (println pr)
+                             (assoc player :goal {:status :move-destination
+                                                  :destination (add pos-ball pr)
+                                                  :run 3}))
+                           player))
         :set-idle (assoc player :goal {:status :idle} :acceleration [0 0] :velocity [0 0])
         player))))
 
 (defn update-players [{players :players :as state}]
-  (let [frame-time (:frame-time state)
-        update-fn (get-player-update-fn (* frame-time 0.001))]
+  (let [update-fn (get-player-update-fn state)]
     (assoc state :players (mapv update-fn players))))
 
 (defn position-ball-with-player [{pos :pos dir :direction}]
