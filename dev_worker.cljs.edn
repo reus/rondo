@@ -1,0 +1,6 @@
+{:main dev.reus.rondo-worker.core
+ :output-to "target/public/cljs-out/dev_worker-main.js"
+ :output-dir "target/public/cljs-out/dev_worker"
+ :asset-path "/cljs-out/dev_worker"
+ :target :webworker
+}

@@ -100,18 +100,6 @@
       model/check-ball
       ))
 
-(defn setup-worker []
-  "Create a webworker object and a player channel through which the worker
-   can communicate."
-  (let [worker (js/Worker. "/worker.js")
-        player-channel (chan 100)]
-    (set! (.-onmessage worker) (fn [msg]
-                                 (go
-                                   (<! (timeout (1000)))
-                                   (>! player-channel msg.data))))
-                                        ;(.postMessage worker state)
-    player-channel))
-
 (defn render! [state]
   "Render all game objects to the drawing context."
   (canvas2d/draw-scene! state))
@@ -149,7 +137,18 @@
     :goal (update-in state [:players (:index e)] #(assoc % :goal (:goal e)))
     state))
 
-(defn game-loop [state ui-channel player-channel]
+(defn setup-worker-channel [worker]
+  "Create a channel through which the webworker can communicate."
+  (let [worker-channel (chan)]
+    (set! (.-onmessage worker) (fn [msg]
+                                 (println "Received a message from worker:" msg.data)
+                                 (go
+                                   (while (not (get @ui/ui-state :webworker))
+                                     (<! (timeout 1000)))
+                                   (>! worker-channel msg))))
+    worker-channel))
+
+(defn game-loop [state ui-channel worker worker-channel]
   (let [rate (:refresh-rate state)]
     (render! state)
     (go (loop [refresh (timeout rate)
@@ -158,7 +157,7 @@
           (let [[v c] (alts! [refresh
                               ui-state-update
                               ui-channel
-                              player-channel] :priority true)]
+                              worker-channel] :priority true)]
             (condp = c
               refresh (let [new-state (step s)]
                         (render! new-state)
@@ -168,10 +167,12 @@
                                 (recur refresh (timeout 100) new-state))
               ui-channel (let [new-state (process-ui s v)]
                            (recur refresh ui-state-update new-state))
-              player-channel (let [new-state v]
-                               ;(.postMessage worker v)
-                               (recur refresh ui-state-update new-state))))))))
-(defn start-game []
+              worker-channel (let [state-info v
+                                   ;obj (.parse js/JSON (.stringify js/JSON state))]
+                                   ]
+                               (.postMessage worker (:frame-time s))
+                               (recur refresh ui-state-update s))))))))
+(defn start-game! []
   "Start the game.
    * Initialize game state
    * Set up user interface and receive channel
@@ -179,7 +180,9 @@
    * Start the game loop and pass the channels"
   (let [state (init-state)
         ui-channel (ui/setup-ui state)
-        player-channel (setup-worker)]
-    (game-loop state ui-channel player-channel)))
+        worker (js/Worker. "cljs-out/dev_worker-main.js")
+        worker-channel (setup-worker-channel worker)]
+    (.postMessage worker #js [0 1 2 3 4 5])
+    (game-loop state ui-channel worker worker-channel)))
 
-(defonce game (start-game))
+(defonce game (start-game!))

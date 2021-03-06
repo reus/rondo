@@ -14,6 +14,7 @@
                                                 0 ; shoot
                                                 1 ; walk (1) or run (3)
                                                ]
+                                 :webworker false
                                  }))
 
 (defn notify-channel! [m]
@@ -74,15 +75,25 @@
                                                          :direction [0 1]}
                                                   :index (:index player)}))}]]
      [:div [:input {:type "checkbox"
-                    ;:value "approach ball"
+                                        ;:value "approach ball"
                     :checked (= :approach-ball (get-in player [:goal :status]))
                     :on-change (fn [e]
                                  (let [status (if (.. e -target -checked)
                                                 :approach-ball
                                                 :set-idle)]
+                                   (notify-channel! {:type :goal
+                                                     :goal {:status status}
+                                                     :index (:index player)})))}] "Approach ball"]
+     [:div [:input {:type "checkbox"
+                    ;:value "approach ball"
+                    :checked (= :face-ball (get-in player [:goal :status]))
+                    :on-change (fn [e]
+                                 (let [status (if (.. e -target -checked)
+                                                :face-ball
+                                                :set-idle)]
                                        (notify-channel! {:type :goal
                                                          :goal {:status status}
-                                                         :index (:index player)})))}] "Approach ball"]
+                                                         :index (:index player)})))}] "Face ball"]
      ])
 
 (defn ui-team []
@@ -118,7 +129,10 @@
         (if (:selected-team state)
           [ui-team]
           [:div "General settings"
-           [:input {:type "button" :value "Reset all players" :on-click (fn [e] nil)}]]))]]))
+           [:div [:input {:type "button" :value "Reset all players" :on-click (fn [e] nil)}]]
+           [:div [:input {:type "checkbox" :on-change (fn [e] (swap! ui-state assoc :webworker (.. e -target -checked)))}] "Webworker"]
+           ]
+          ))]]))
 
 (defn process-key [e dir]
   (case dir

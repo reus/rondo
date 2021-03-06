@@ -1,1 +1,5 @@
-{:main dev.reus.rondo.gameloop}
+{:main dev.reus.rondo.gameloop
+ :output-to "target/public/cljs-out/dev-main.js"
+ :output-dir "target/public/cljs-out/dev"
+ :asset-path "/cljs-out/dev"}
+

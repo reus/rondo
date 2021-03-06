@@ -1,5 +1,5 @@
 {:ring-server-options {:port 9500}
- :watch-dirs ["src/cljs"]
+ :watch-dirs ["src/cljs" "src/cljs_worker"]
  :css-dirs ["resources/public/css"]
  :open-url false}
 
