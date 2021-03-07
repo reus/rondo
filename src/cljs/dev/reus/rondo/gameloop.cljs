@@ -1,7 +1,7 @@
 (ns dev.reus.rondo.gameloop
   (:require [dev.reus.rondo.canvas2d :as canvas2d]
-            [dev.reus.rondo.ui2 :as ui]
-            [dev.reus.rondo.model2 :as model]
+            [dev.reus.rondo.ui :as ui]
+            [dev.reus.rondo.model :as model]
             [cljs.core.async :as async :refer [<! >! chan timeout]]
             [cljs.pprint :refer [pprint]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
@@ -148,11 +148,17 @@
                                    (>! worker-channel msg))))
     worker-channel))
 
+(defn state->array-buffer! [state]
+  (let [ar (js/Uint16Array. 8)]
+    (aset ar 0 (get state :frame-time))
+    (.-buffer ar)))
+
+
 (defn game-loop [state ui-channel worker worker-channel]
   (let [rate (:refresh-rate state)]
     (render! state)
     (go (loop [refresh (timeout rate)
-               ui-state-update (timeout 100)
+               ui-state-update (timeout 1000)
                s state]
           (let [[v c] (alts! [refresh
                               ui-state-update
@@ -164,13 +170,14 @@
                         (recur (timeout rate) ui-state-update new-state))
               ui-state-update (let [new-state (update-fps s)]
                                 (ui/update-ui-state! new-state)
-                                (recur refresh (timeout 100) new-state))
+                                (recur refresh (timeout 1000) new-state))
               ui-channel (let [new-state (process-ui s v)]
                            (recur refresh ui-state-update new-state))
               worker-channel (let [state-info v
+                                   state-array (state->array-buffer! s)
                                    ;obj (.parse js/JSON (.stringify js/JSON state))]
                                    ]
-                               (.postMessage worker (:frame-time s))
+                               (.postMessage worker state-array [state-array])
                                (recur refresh ui-state-update s))))))))
 (defn start-game! []
   "Start the game.
@@ -182,7 +189,6 @@
         ui-channel (ui/setup-ui state)
         worker (js/Worker. "cljs-out/dev_worker-main.js")
         worker-channel (setup-worker-channel worker)]
-    (.postMessage worker #js [0 1 2 3 4 5])
     (game-loop state ui-channel worker worker-channel)))
 
 (defonce game (start-game!))

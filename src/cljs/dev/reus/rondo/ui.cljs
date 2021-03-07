@@ -1,84 +1,112 @@
 (ns dev.reus.rondo.ui
   (:require [dev.reus.rondo.utils :refer [by-id]]
-            [dev.reus.rondo.gamedata :as gamedata]
-            [dev.reus.rondo.model :refer [point-in-players?
-                                          reset-position-player
-                                          random-position-player]]
             [cljs.core.async :as async :refer [chan put!]]
             [reagent.core :as reagent]
             [reagent.dom :as rdom]))
 
-(defonce signal (reagent/atom {}))
 (defonce ui-state (reagent/atom {:selected-player nil
                                  :selected-team nil
                                  :teams nil
                                  :players nil
-                                 :action nil
+                                 :ui-chan nil
+                                 :keys-pressed [0 ; forward
+                                                0 ; turn left (-1) or right (1)
+                                                0 ; shoot
+                                                1 ; walk (1) or run (3)
+                                               ]
+                                 :webworker false
                                  }))
 
-;; define keys-pressed, an atom that has a vector containing in this order:
-;; 0 1 turn
-;; 2 forward / backward
-;; 3 shoot
-(defonce keys-pressed (atom [0 0 0 1 false]))
+(defn notify-channel! [m]
+  (let [c (get @ui-state :ui-chan)]
+    (put! c m)))
 
-(defn update-fps! [fps]
-  "Update the fps of the game"
-  (swap! ui-state assoc :fps (.round js/Math fps)))
-
-(defn ui-player []
+(defn ui-player [player]
   "Returns reagent ui for handling players."
-  (let [state @ui-state
-        player-index (:selected-player state)
-        player (get (:players state) player-index)]
     [:div
-     [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
+     [:a {:class "back" :on-click (fn [_]
+                                    (swap! ui-state assoc :selected-player nil))} "Back"]
      [:div "name: " (:name player)]
      [:div [:input {:type "button"
                     :value "Reset position"
                     :on-click (fn [e]
-                                (swap! ui-state assoc :action {:type :reset-position :index player-index}))}]]
+                                (notify-channel! {:type :reset-position :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value "Random position"
                     :on-click (fn [e]
-                                (swap! ui-state assoc :action {:type :random-position :index player-index}))}]]
+                                (notify-channel! {:type :random-position :index (:index player)}))}]]
      [:div [:input {:type "button"
                     :value "Give ball"
                     :on-click (fn [e]
-                                (swap! ui-state assoc :action {:type :give-ball :index player-index}))}]]
-     ]))
-
-
-; (defn ui-player []
-;   "Returns reagent ui for handling players."
-;   (let [state @ui-state
-;         player-index (:selected-player state)
-;         player (get (:players state) player-index)]
-;     [:div
-;      [:a {:class "back" :on-click (fn [_] (swap! ui-state assoc :selected-player nil))} "Back"]
-;      [:div "name: " (:name player)]
-;      [:div [:input {:type "button"
-;                     :value "Reset position"
-;                     :on-click (fn [e]
-;                                 (reset! signal {:type :reset-position :index player-index}))}]]
-;      [:div [:input {:type "button"
-;                     :value "Random position"
-;                     :on-click (fn [e]
-;                                 (reset! signal {:type :random-position :index player-index}))}]]
-;      [:div [:input {:type "button"
-;                     :value "Give ball"
-;                     :on-click (fn [e]
-;                                 (reset! signal {:type :give-ball :index player-index}))}]]
-;      ]))
+                                (notify-channel! {:type :give-ball
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value "Idle"
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :set-idle}
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2191
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move-direction
+                                                         :direction [0 -1]}
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2190
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move-direction
+                                                         :direction [-1 0]}
+                                                  :index (:index player)}))}]
+           [:input {:type "button"
+                    :value \u2192
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move-direction
+                                                         :direction [1 0]}
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "button"
+                    :value \u2193
+                    :on-click (fn [e]
+                                (notify-channel! {:type :goal
+                                                  :goal {:status :move-direction
+                                                         :direction [0 1]}
+                                                  :index (:index player)}))}]]
+     [:div [:input {:type "checkbox"
+                                        ;:value "approach ball"
+                    :checked (= :approach-ball (get-in player [:goal :status]))
+                    :on-change (fn [e]
+                                 (let [status (if (.. e -target -checked)
+                                                :approach-ball
+                                                :set-idle)]
+                                   (swap! ui-state assoc-in [:players (get player :index) :goal] {:status status})
+                                   (notify-channel! {:type :goal
+                                                     :goal {:status status}
+                                                     :index (:index player)})))}] "Approach ball"]
+     [:div [:input {:type "checkbox"
+                    ;:value "approach ball"
+                    :checked (= :face-ball (get-in player [:goal :status]))
+                    :on-change (fn [e]
+                                 (let [status (if (.. e -target -checked)
+                                                :face-ball
+                                                :set-idle)]
+                                   (swap! ui-state assoc-in [:players (get player :index) :goal] {:status status})
+                                   (notify-channel! {:type :goal
+                                                     :goal {:status status}
+                                                     :index (:index player)})))}] "Face ball"]
+     ])
 
 (defn ui-team []
   "Returns ui for handling teams."
   [:div
-   [:a {:class "back" :on-click (fn [e] (reset! signal {:type :select-team :team-id nil}))} "Back"]])
+   [:a {:class "back" :on-click (fn [e] nil)} "Back"]])
 
 (defn get-ui []
   "Get the Reagent array that forms the user interface."
-  (let [state @ui-state]
+  (let [state @ui-state
+        players (:players state)]
     [:div
      [:div.teams
       (for [team (:teams state)]
@@ -88,7 +116,7 @@
                                          "team")
                                 :on-click (fn [_] (swap! ui-state assoc assoc :selected-team (:id team)))}
                            (:name team)]
-                      (for [player (filter (comp #{(:id team)} :team) (:players state))]
+                      (for [player (filter (comp #{(:id team)} :team) players)]
                         ^{:key player} [:li {:class (if (= (:index player)
                                                            (:selected-player state))
                                                       "selected player"
@@ -98,41 +126,47 @@
                                         [:span {:class "name"} (:name player)]])])]
      [:div.settings
       [:div "FPS: " (str (:fps @ui-state))]
-      (if (:selected-player state)
-        [ui-player]
+      (if-let [selected-player-index (:selected-player state)]
+        [ui-player (get players selected-player-index)]
         (if (:selected-team state)
           [ui-team]
           [:div "General settings"
-           [:input {:type "button" :value "Reset all players" :on-click (fn [e] (reset! signal {:type :reset-all}))}]]))]]))
+           [:div [:input {:type "button"
+                          :value "Reset all players"
+                          :on-click (fn [e] nil)}]]
+           [:div [:input {:type "checkbox"
+                          :checked (get @ui-state :webworker)
+                          :on-change (fn [e]
+                                       (swap! ui-state assoc :webworker (.. e -target -checked)))
+                          }
+                  ] "Webworker"]
+           ]
+          ))]]))
 
 (defn process-key [e dir]
   (case dir
-    :down
-          (case e.key
-            ;"ArrowLeft" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 2))
-            ;"ArrowRight" (if (= (get @keys-pressed 0) 0) (swap! keys-pressed assoc 0 1))
-            "ArrowLeft" (swap! keys-pressed assoc 0 1 1 -1)
-            "ArrowRight" (swap! keys-pressed assoc 0 -1 1 1)
-            "ArrowUp" (swap! keys-pressed assoc 2 1)
-            "ArrowDown" (swap! keys-pressed assoc 2 -1)
-            "Shift" (swap! keys-pressed assoc 3 5)
-            ("z" "Z") (swap! keys-pressed assoc 4 true)
-            ("k" "K") (println @keys-pressed)
-            ("s" "S") (reset! signal {:type :print-state})
-            ("c") (reset! signal {:type :change-selected-player})
-            ("C") (reset! signal {:type :change-selected-player-with-ball})
-            ("u" "U") (println @ui-state)
-            ("p" "P") (reset! signal {:type :print-player-state})
-            ("t" "T") (reset! signal {:type :print-test-info})
-            ("b" "B") (reset! signal {:type :print-ball-info})
+    :down (case e.key
+            ;; control player
+            "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 1)
+            "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] -1)
+            "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 1)
+            ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 1)
+            ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 3)
+            ("Control") (swap! ui-state assoc-in [:keys-pressed 3] 0.2)
+            ;; print state
+            ("s" "S") (notify-channel! {:type :print-state})
+            ("u" "U") (notify-channel! {:type :print-ui-state})
+            ("b" "B") (notify-channel! {:type :print-ball-info})
+            ("p" "P") (if-let [p (get @ui-state :selected-player)]
+                        (notify-channel! {:type :print-player-info :index p}))
             :default)
     :up (case e.key
-          "ArrowLeft" (swap! keys-pressed assoc 0 0 1 0)
-          "ArrowRight" (swap! keys-pressed assoc 0 0 1 0)
-          "ArrowUp" (swap! keys-pressed assoc 2 0)
-          "ArrowDown" (swap! keys-pressed assoc 2 0)
-          "Shift" (swap! keys-pressed assoc 3 1)
-          ("z" "Z") (swap! keys-pressed assoc 4 false)
+          "ArrowUp" (swap! ui-state assoc-in [:keys-pressed 0] 0)
+          "ArrowLeft" (swap! ui-state assoc-in [:keys-pressed 1] 0)
+          "ArrowRight" (swap! ui-state assoc-in [:keys-pressed 1] 0)
+          ("z" "Z") (swap! ui-state assoc-in [:keys-pressed 2] 0)
+          ("Shift") (swap! ui-state assoc-in [:keys-pressed 3] 1)
+          ("Control") (swap! ui-state assoc-in [:keys-pressed 3] 1)
           :default)
     :default))
 
@@ -146,7 +180,15 @@
 (defn setup-event-handlers! []
   "Add event listeners."
   (let [canvas (by-id "canvas")]
-    (.addEventListener canvas "mousedown" (fn [e] (reset! signal {:type :click :event e})))
+    (.addEventListener canvas "mousedown" (fn [event]
+                                            (let [rect (.getBoundingClientRect canvas)
+                                                  x (- (.-clientX event) (.-left rect))
+                                                  y (- (.-clientY event) (.-top rect))
+                                                  button (.-button event)]
+                                              (case button
+                                                0 (notify-channel! {:type :click-canvas-move :pos [x y]})
+                                                2 (notify-channel! {:type :click-canvas-shoot :pos [x y]})
+                                                :do-nothing))))
     (.addEventListener js/document "keyup" (get-key-listener :up))
     (.addEventListener js/document "keydown" (get-key-listener :down))))
 
@@ -155,12 +197,13 @@
 that offers a means to communicate with the game loop. Returns the channel and a reagent atom
 with ui state."
   (let [ui-chan (chan)
-        players (mapv #(select-keys % [:index :name :team :nr]) players)
-        state-updater (fn []
-                        (let [s @ui-state]
-                          (put! ui-chan s)))]
-    (swap! ui-state assoc :players players :teams teams)
+        sel-players (mapv #(select-keys % [:index :name :team :nr]) players)
+        sel-teams (mapv #(select-keys % [:id :name]) teams)]
+    (swap! ui-state assoc :players sel-players :teams sel-teams :ui-chan ui-chan)
     (rdom/render [get-ui] (by-id "ui"))
     (setup-event-handlers!)
-    (reagent/track! state-updater)
     ui-chan))
+
+(defn update-ui-state! [{{fps :fps} :fps-info players :players}]
+  (swap! ui-state assoc :players (mapv #(select-keys % [:index :name :team :nr :goal]) players))
+  (swap! ui-state assoc :fps (.round js/Math fps)))
