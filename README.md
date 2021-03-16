@@ -2,6 +2,10 @@
 
 Positional football simulation through deep learning, using Clojure and ClojureScript.
 
+A 'rondo' is a Dutch term for a football training game where one team (usually standing in a circle) tries to circulate and keep possession of the ball whereas another team tries to win the ball. The team trying to capture the ball is usually outnumered. In some cases, the players can only touch the ball once and thus have to keep circulating the ball. Johan Cruijff introduced the rondo at Barcelona. It is considered to help players gain positional skills by having to pass fast and short (depending on the size of the circle) and always be available to receive the ball.
+
+This is a simulation loosely based on a 'rondo'. The idea is to use machine learning to make computer-controlled players behave intelligently. Whereas a full football game requires many aspects to learn, why not better start with a simpel 'rondo'?
+
 ### License
 
 MIT License
