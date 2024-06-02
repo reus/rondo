@@ -1,4 +1,4 @@
-(ns dev.reus.rondo.model)
+(ns dev.reus.rondo.math)
 
 (defn dot-product [v1 v2]
   "Compute the dot product of two vectors."

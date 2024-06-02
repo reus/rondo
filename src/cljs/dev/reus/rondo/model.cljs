@@ -6,13 +6,10 @@
             [dev.reus.rondo.gamedata :as gamedata]))
 
 (defn find-color [team]
-  "Determine the shirt-color of a player. Use a team keyword."
-  (loop [i 0]
-    (if-let [t (get gamedata/teams i)]
-      (if (= (:id t) team)
-        (:color t)
-        (recur (inc i)))
-      [0 0 0])))
+  (->> gamedata/teams
+       (filter (comp (partial = team) :id))
+       first
+       :color))
 
 (defn init-player [idx player]
   "Initialize player vector. Adds different game related
@@ -282,3 +279,7 @@
         (println state)
         (assoc-in state [:ball :pos] [10 10]))
       state)))
+
+(comment
+  (find-color :nl)
+)

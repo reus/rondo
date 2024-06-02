@@ -1,6 +1,6 @@
 (ns dev.reus.rondo.canvas2d
   (:require [dev.reus.rondo.gamedata :as gamedata]
-            [dev.reus.rondo.ui2 :as ui]
+            [dev.reus.rondo.ui :as ui]
             [dev.reus.rondo.utils :refer [by-id]]))
 
 (defonce pi (.-PI js/Math))

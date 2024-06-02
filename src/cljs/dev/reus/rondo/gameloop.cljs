@@ -191,4 +191,11 @@
         worker-channel (setup-worker-channel worker)]
     (game-loop state ui-channel worker worker-channel)))
 
-(defonce game (start-game!))
+(def game (start-game!))
+
+
+(comment
+
+  (js/alert "hi")
+
+)

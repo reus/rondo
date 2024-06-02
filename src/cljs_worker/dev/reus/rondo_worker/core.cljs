@@ -1,5 +1,5 @@
 (ns dev.reus.rondo-worker.core
-  (:require [dev.reus.rondo.model2 :as model]))
+  (:require [dev.reus.rondo.math :as math]))
 
 (defn process-state [message]
   (println "received message in worker")
@@ -12,4 +12,4 @@
 
 (.postMessage js/self 0)
 
-(println (model/distance [0 0] [5 3]))
+(println (math/distance [0 0] [5 3]))
