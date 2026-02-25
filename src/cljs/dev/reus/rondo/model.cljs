@@ -11,18 +11,21 @@
        first
        :color))
 
+(defn rgb-str [[r g b]]
+  (str "rgb(" (* 256 r) "," (* 256 g) "," (* 256 b) ")"))
+
 (defn init-player [idx player]
   "Initialize player vector. Adds different game related
    properties to each player hashmap."
   (let [team (:team player)
-        color (find-color team)
-        [r g b] (map #(* 256 %) color)
-        color-str (str "rgb(" r "," g "," b ")")]
+        color (find-color team)]
     (assoc player
            :goal {:status :idle}
            :index idx
            :color color
-           :color-str color-str)))
+           :color-str (rgb-str color)
+           :skin-str (rgb-str (:skin player))
+           :hair-color-str (rgb-str (:hair-color player)))))
 
 (defn init-players []
   "Initialize player data to be used in gameloop."
