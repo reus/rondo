@@ -2,3 +2,5 @@
 .cpcache/
 target/
 commit.org
+.clj-kondo/
+.lsp/
